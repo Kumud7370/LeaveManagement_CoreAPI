@@ -14,6 +14,10 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson.Serialization.Serializers;
+using AttendanceManagementSystem.Models.Enums;
 
 namespace AttendanceManagementSystem.Common.Extensions
 {
@@ -21,6 +25,9 @@ namespace AttendanceManagementSystem.Common.Extensions
     {
         public static IServiceCollection AddCustomServices(this IServiceCollection services, IConfiguration configuration)
         {
+            // Configure MongoDB enum serialization FIRST (before any MongoDB operations)
+            ConfigureMongoDbEnumSerialization();
+
             // Settings
             services.Configure<MongoDbSettings>(configuration.GetSection("MongoDbSettings"));
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
@@ -53,6 +60,18 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
             return services;
+        }
+
+        // NEW METHOD: Configure MongoDB to serialize enums as strings
+        private static void ConfigureMongoDbEnumSerialization()
+        {
+            // Check if already registered to avoid duplicate registration errors
+            if (!BsonSerializer.SerializerRegistry.GetSerializer<Gender>().GetType().Name.Contains("EnumSerializer"))
+            {
+                BsonSerializer.RegisterSerializer(new EnumSerializer<Gender>(BsonType.String));
+                BsonSerializer.RegisterSerializer(new EnumSerializer<EmploymentType>(BsonType.String));
+                BsonSerializer.RegisterSerializer(new EnumSerializer<EmployeeStatus>(BsonType.String));
+            }
         }
 
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)

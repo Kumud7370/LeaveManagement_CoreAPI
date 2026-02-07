@@ -2,6 +2,7 @@
 using AttendanceManagementSystem.Models.ValueObjects;
 using MongoDB.Bson.Serialization.Attributes;
 using System.Net;
+using System.Text.Json.Serialization;
 
 namespace AttendanceManagementSystem.Models.Entities
 {
@@ -32,7 +33,7 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime DateOfBirth { get; set; }
 
-        [BsonElement("gender")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public Gender Gender { get; set; }
 
         [BsonElement("address")]
@@ -55,10 +56,10 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? DateOfLeaving { get; set; }
 
-        [BsonElement("employmentType")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public EmploymentType EmploymentType { get; set; }
 
-        [BsonElement("employeeStatus")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public EmployeeStatus EmployeeStatus { get; set; }
 
         [BsonElement("profileImageUrl")]
