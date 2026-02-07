@@ -31,9 +31,11 @@ namespace AttendanceManagementSystem.Common.Extensions
             // Repositories
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
+            services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 
             // Services
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IEmployeeService, EmployeeService>();
 
             // Helpers
             services.AddScoped<JwtHelper>();
