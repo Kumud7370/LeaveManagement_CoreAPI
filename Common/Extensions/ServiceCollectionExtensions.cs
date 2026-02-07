@@ -24,6 +24,7 @@ namespace AttendanceManagementSystem.Common.Extensions
             // Settings
             services.Configure<MongoDbSettings>(configuration.GetSection("MongoDbSettings"));
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
+            services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 
             // Database Context
             services.AddSingleton<IMongoDbContext, MongoDbContext>();
@@ -32,10 +33,14 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+            services.AddScoped<IAdminInvitationRepository, AdminInvitationRepository>();
+            services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
             // Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
+            services.AddScoped<IEmailService, EmailService>();
+            services.AddScoped<IAdminManagementService, AdminManagementService>();
 
             // Helpers
             services.AddScoped<JwtHelper>();

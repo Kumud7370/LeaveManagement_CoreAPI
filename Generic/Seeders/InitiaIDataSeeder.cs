@@ -49,15 +49,21 @@ namespace AttendanceManagementSystem.Data.Seeders
             {
                 new Role
                 {
+                    Name = "SuperAdmin",
+                    Description = "Super Administrator with full system access",
+                    Permissions = new List<string> { "all", "manage_admins", "manage_invitations" }
+                },
+                new Role
+                {
                     Name = "Admin",
                     Description = "Administrator with full access",
-                    Permissions = new List<string> { "all" }
+                    Permissions = new List<string> { "all", "manage_invitations" }
                 },
                 new Role
                 {
                     Name = "Manager",
                     Description = "Manager with limited access",
-                    Permissions = new List<string> { "read", "write" }
+                    Permissions = new List<string> { "read", "write", "manage_invitations" }
                 },
                 new Role
                 {
@@ -83,34 +89,34 @@ namespace AttendanceManagementSystem.Data.Seeders
                 return;
             }
 
-            var adminRole = (await _roleRepository.GetAllAsync())
-                .FirstOrDefault(r => r.Name == "Admin");
+            var superAdminRole = (await _roleRepository.GetAllAsync())
+                .FirstOrDefault(r => r.Name == "SuperAdmin");
 
-            if (adminRole == null)
+            if (superAdminRole == null)
             {
-                _logger.LogWarning("Admin role not found. Cannot create admin user.");
+                _logger.LogWarning("SuperAdmin role not found. Cannot create SuperAdmin user.");
                 return;
             }
 
-            // Password: Admin@123
-            var adminUser = new User
+            // Password: SuperAdmin@123
+            var superAdminUser = new User
             {
-                Username = "admin",
-                Email = "admin@attendance.com",
-                PasswordHash = PasswordHelper.HashPassword("Admin@123"),
-                FirstName = "System",
-                LastName = "Administrator",
+                Username = "superadmin",
+                Email = "chanderekumud@gmail.com",
+                PasswordHash = PasswordHelper.HashPassword("SuperAdmin@123"),
+                FirstName = "Super",
+                LastName = "Admin",
                 IsActive = true,
-                RoleIds = new List<string> { adminRole.Id }
+                RoleIds = new List<string> { superAdminRole.Id }
             };
 
-            await _userRepository.CreateAsync(adminUser);
+            await _userRepository.CreateAsync(superAdminUser);
 
             _logger.LogInformation("===========================================");
-            _logger.LogInformation("ADMIN USER CREATED SUCCESSFULLY");
-            _logger.LogInformation("Username: admin");
-            _logger.LogInformation("Password: Admin@123");
-            _logger.LogInformation("Email: admin@attendance.com");
+            _logger.LogInformation("SUPER ADMIN USER CREATED SUCCESSFULLY");
+            _logger.LogInformation("Username: superadmin");
+            _logger.LogInformation("Password: SuperAdmin@123");
+            _logger.LogInformation("Email: chanderekumud@gmail.com");
             _logger.LogInformation("===========================================");
         }
     }
