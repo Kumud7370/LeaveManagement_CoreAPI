@@ -1,0 +1,452 @@
+﻿using AttendanceManagementSystem.Common.Helpers;
+using AttendanceManagementSystem.Models.DTOs.AdminManagement;
+using AttendanceManagementSystem.Models.Entities;
+using AttendanceManagementSystem.Repositories.Interfaces;
+using AttendanceManagementSystem.Services.Interfaces;
+using System.Security.Cryptography;
+using System.Text;
+
+namespace AttendanceManagementSystem.Services.Implementations
+{
+    public class AdminManagementService : IAdminManagementService
+    {
+        private readonly IAdminInvitationRepository _invitationRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly IRoleRepository _roleRepository;
+        private readonly IAuditLogRepository _auditLogRepository;
+        private readonly IEmailService _emailService;
+        private readonly ILogger<AdminManagementService> _logger;
+
+        // Role hierarchy: SuperAdmin > Admin > Manager > Employee
+        private readonly Dictionary<string, List<string>> _roleHierarchy = new()
+        {
+            { "SuperAdmin", new List<string> { "Admin", "Manager", "Employee" } },
+            { "Admin", new List<string> { "Manager", "Employee" } },
+            { "Manager", new List<string> { "Employee" } },
+            { "Employee", new List<string>() }
+        };
+
+        public AdminManagementService(
+            IAdminInvitationRepository invitationRepository,
+            IUserRepository userRepository,
+            IRoleRepository roleRepository,
+            IAuditLogRepository auditLogRepository,
+            IEmailService emailService,
+            ILogger<AdminManagementService> logger)
+        {
+            _invitationRepository = invitationRepository;
+            _userRepository = userRepository;
+            _roleRepository = roleRepository;
+            _auditLogRepository = auditLogRepository;
+            _emailService = emailService;
+            _logger = logger;
+        }
+
+        public async Task<InvitationResponseDto?> SendInvitationAsync(
+            SendInvitationDto dto,
+            string inviterId,
+            string inviterName,
+            string? ipAddress = null)
+        {
+            try
+            {
+                // Get inviter's roles
+                var inviter = await _userRepository.GetByIdAsync(inviterId);
+                if (inviter == null)
+                {
+                    _logger.LogWarning($"Inviter with ID {inviterId} not found");
+                    return null;
+                }
+
+                var inviterRoles = await _roleRepository.GetRolesByIdsAsync(inviter.RoleIds);
+                var inviterRoleNames = inviterRoles.Select(r => r.Name).ToList();
+
+                // Check if inviter can invite this role
+                if (!CanInviteRole(inviterRoleNames, dto.Role))
+                {
+                    _logger.LogWarning($"User {inviterName} cannot invite role {dto.Role}");
+                    return null;
+                }
+
+                // Check if email already exists
+                var existingUser = await _userRepository.GetByEmailAsync(dto.Email);
+                if (existingUser != null)
+                {
+                    _logger.LogWarning($"User with email {dto.Email} already exists");
+                    return null;
+                }
+
+                // Check if there's already a pending invitation
+                var existingInvitation = await _invitationRepository.GetByEmailAsync(dto.Email);
+                if (existingInvitation != null && existingInvitation.Status == "Pending")
+                {
+                    _logger.LogWarning($"Pending invitation already exists for {dto.Email}");
+                    return null;
+                }
+
+                // Generate secure token
+                var token = GenerateSecureToken();
+
+                var invitation = new AdminInvitation
+                {
+                    Email = dto.Email,
+                    InvitedRole = dto.Role,
+                    Token = token,
+                    InvitedBy = inviterId,
+                    InvitedByName = inviterName,
+                    Status = "Pending",
+                    ExpiresAt = DateTime.UtcNow.AddDays(7),
+                    Notes = dto.Notes
+                };
+
+                await _invitationRepository.CreateAsync(invitation);
+
+                // Send invitation email
+                await _emailService.SendInvitationEmailAsync(
+                    dto.Email,
+                    dto.Email.Split('@')[0], // Use email prefix as name
+                    token,
+                    dto.Role,
+                    inviterName
+                );
+
+                // Log audit
+                await LogAuditAsync(
+                    inviterId,
+                    inviterName,
+                    "SendInvitation",
+                    "AdminInvitation",
+                    invitation.Id,
+                    $"Invited {dto.Email} as {dto.Role}",
+                    ipAddress
+                );
+
+                return MapToDto(invitation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending invitation");
+                return null;
+            }
+        }
+
+        public async Task<InvitationResponseDto?> UpdateInvitationAsync(
+            string invitationId,
+            EditInvitationDto dto,
+            string updatedBy,
+            string? ipAddress = null)
+        {
+            try
+            {
+                var invitation = await _invitationRepository.GetByIdAsync(invitationId);
+                if (invitation == null || invitation.Status != "Pending")
+                {
+                    return null;
+                }
+
+                var changes = new StringBuilder();
+
+                if (!string.IsNullOrEmpty(dto.Email) && dto.Email != invitation.Email)
+                {
+                    changes.Append($"Email: {invitation.Email} -> {dto.Email}; ");
+                    invitation.Email = dto.Email;
+                }
+
+                if (!string.IsNullOrEmpty(dto.Role) && dto.Role != invitation.InvitedRole)
+                {
+                    changes.Append($"Role: {invitation.InvitedRole} -> {dto.Role}; ");
+                    invitation.InvitedRole = dto.Role;
+                }
+
+                if (dto.Notes != null && dto.Notes != invitation.Notes)
+                {
+                    changes.Append($"Notes updated; ");
+                    invitation.Notes = dto.Notes;
+                }
+
+                if (changes.Length > 0)
+                {
+                    await _invitationRepository.UpdateAsync(invitationId, invitation);
+
+                    // Log audit
+                    var user = await _userRepository.GetByIdAsync(updatedBy);
+                    await LogAuditAsync(
+                        updatedBy,
+                        user?.Username ?? "Unknown",
+                        "UpdateInvitation",
+                        "AdminInvitation",
+                        invitationId,
+                        changes.ToString(),
+                        ipAddress
+                    );
+                }
+
+                return MapToDto(invitation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating invitation {invitationId}");
+                return null;
+            }
+        }
+
+        public async Task<bool> RevokeInvitationAsync(string invitationId, string revokedBy, string? ipAddress = null)
+        {
+            try
+            {
+                var invitation = await _invitationRepository.GetByIdAsync(invitationId);
+                if (invitation == null || invitation.Status != "Pending")
+                {
+                    return false;
+                }
+
+                invitation.Status = "Revoked";
+                invitation.RevokedAt = DateTime.UtcNow;
+                invitation.RevokedBy = revokedBy;
+
+                await _invitationRepository.UpdateAsync(invitationId, invitation);
+
+                // Log audit
+                var user = await _userRepository.GetByIdAsync(revokedBy);
+                await LogAuditAsync(
+                    revokedBy,
+                    user?.Username ?? "Unknown",
+                    "RevokeInvitation",
+                    "AdminInvitation",
+                    invitationId,
+                    $"Revoked invitation for {invitation.Email}",
+                    ipAddress
+                );
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error revoking invitation {invitationId}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteInvitationAsync(string invitationId, string deletedBy, string? ipAddress = null)
+        {
+            try
+            {
+                var invitation = await _invitationRepository.GetByIdAsync(invitationId);
+                if (invitation == null)
+                {
+                    return false;
+                }
+
+                await _invitationRepository.DeleteAsync(invitationId);
+
+                // Log audit
+                var user = await _userRepository.GetByIdAsync(deletedBy);
+                await LogAuditAsync(
+                    deletedBy,
+                    user?.Username ?? "Unknown",
+                    "DeleteInvitation",
+                    "AdminInvitation",
+                    invitationId,
+                    $"Deleted invitation for {invitation.Email}",
+                    ipAddress
+                );
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error deleting invitation {invitationId}");
+                return false;
+            }
+        }
+
+        public async Task<IEnumerable<InvitationResponseDto>> GetAllInvitationsAsync()
+        {
+            var invitations = await _invitationRepository.GetAllAsync();
+            return invitations.Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<InvitationResponseDto>> GetMyInvitationsAsync(string inviterId)
+        {
+            var invitations = await _invitationRepository.GetByInviterAsync(inviterId);
+            return invitations.Select(MapToDto);
+        }
+
+        public async Task<InvitationResponseDto?> ValidateTokenAsync(string token)
+        {
+            var invitation = await _invitationRepository.GetByTokenAsync(token);
+
+            if (invitation == null)
+            {
+                return null;
+            }
+
+            if (invitation.Status != "Pending")
+            {
+                return null;
+            }
+
+            if (invitation.ExpiresAt < DateTime.UtcNow)
+            {
+                invitation.Status = "Expired";
+                await _invitationRepository.UpdateAsync(invitation.Id, invitation);
+                return null;
+            }
+
+            return MapToDto(invitation);
+        }
+
+        public async Task<bool> AcceptInvitationAsync(AcceptInvitationDto dto, string? ipAddress = null)
+        {
+            try
+            {
+                var invitation = await _invitationRepository.GetByTokenAsync(dto.Token);
+
+                if (invitation == null || invitation.Status != "Pending")
+                {
+                    _logger.LogWarning($"Invalid or non-pending invitation token");
+                    return false;
+                }
+
+                if (invitation.ExpiresAt < DateTime.UtcNow)
+                {
+                    invitation.Status = "Expired";
+                    await _invitationRepository.UpdateAsync(invitation.Id, invitation);
+                    _logger.LogWarning($"Invitation token expired");
+                    return false;
+                }
+
+                // Check if username already exists
+                var existingUser = await _userRepository.GetByUsernameAsync(dto.Username);
+                if (existingUser != null)
+                {
+                    _logger.LogWarning($"Username {dto.Username} already exists");
+                    return false;
+                }
+
+                // Get role
+                var role = await _roleRepository.GetByNameAsync(invitation.InvitedRole);
+                if (role == null)
+                {
+                    _logger.LogWarning($"Role {invitation.InvitedRole} not found");
+                    return false;
+                }
+
+                // Create user
+                var newUser = new User
+                {
+                    Username = dto.Username,
+                    Email = invitation.Email,
+                    PasswordHash = PasswordHelper.HashPassword(dto.Password),
+                    FirstName = dto.FirstName,
+                    LastName = dto.LastName,
+                    IsActive = true,
+                    RoleIds = new List<string> { role.Id }
+                };
+
+                await _userRepository.CreateAsync(newUser);
+
+                // Update invitation
+                invitation.Status = "Accepted";
+                invitation.AcceptedAt = DateTime.UtcNow;
+                await _invitationRepository.UpdateAsync(invitation.Id, invitation);
+
+                // Send welcome email
+                await _emailService.SendWelcomeEmailAsync(
+                    newUser.Email,
+                    newUser.Username,
+                    invitation.InvitedRole
+                );
+
+                // Log audit
+                await LogAuditAsync(
+                    newUser.Id,
+                    newUser.Username,
+                    "AcceptInvitation",
+                    "User",
+                    newUser.Id,
+                    $"Accepted invitation and created account as {invitation.InvitedRole}",
+                    ipAddress
+                );
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error accepting invitation");
+                return false;
+            }
+        }
+
+        private bool CanInviteRole(List<string> inviterRoles, string targetRole)
+        {
+            foreach (var inviterRole in inviterRoles)
+            {
+                if (_roleHierarchy.ContainsKey(inviterRole) &&
+                    _roleHierarchy[inviterRole].Contains(targetRole))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private string GenerateSecureToken()
+        {
+            var randomBytes = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(randomBytes);
+            }
+            return Convert.ToBase64String(randomBytes)
+                .Replace("+", "")
+                .Replace("/", "")
+                .Replace("=", "")
+                .Substring(0, 32);
+        }
+
+        private async Task LogAuditAsync(
+            string userId,
+            string userName,
+            string action,
+            string entity,
+            string? entityId,
+            string? changes,
+            string? ipAddress)
+        {
+            var auditLog = new AuditLog
+            {
+                UserId = userId,
+                UserName = userName,
+                Action = action,
+                Entity = entity,
+                EntityId = entityId,
+                Changes = changes,
+                IpAddress = ipAddress,
+                Timestamp = DateTime.UtcNow
+            };
+
+            await _auditLogRepository.CreateAsync(auditLog);
+        }
+
+        private InvitationResponseDto MapToDto(AdminInvitation invitation)
+        {
+            return new InvitationResponseDto
+            {
+                Id = invitation.Id,
+                Email = invitation.Email,
+                InvitedRole = invitation.InvitedRole,
+                Token = invitation.Token,
+                InvitedBy = invitation.InvitedBy,
+                InvitedByName = invitation.InvitedByName,
+                Status = invitation.Status,
+                ExpiresAt = invitation.ExpiresAt,
+                CreatedAt = invitation.CreatedAt,
+                AcceptedAt = invitation.AcceptedAt,
+                RevokedAt = invitation.RevokedAt,
+                RevokedBy = invitation.RevokedBy,
+                Notes = invitation.Notes
+            };
+        }
+    }
+}
