@@ -3,7 +3,7 @@ using AttendanceManagementSystem.Common.Helpers;
 using AttendanceManagementSystem.Data.Implementations;
 using AttendanceManagementSystem.Data.Interfaces;
 using AttendanceManagementSystem.Data.Seeders;
-using AttendanceManagementSystem.Data.Migrations;  // ADD THIS
+using AttendanceManagementSystem.Data.Migrations;  
 using AttendanceManagementSystem.Models.Settings;
 using AttendanceManagementSystem.Repositories.Implementations;
 using AttendanceManagementSystem.Repositories.Interfaces;
@@ -22,40 +22,32 @@ namespace AttendanceManagementSystem.Common.Extensions
     {
         public static IServiceCollection AddCustomServices(this IServiceCollection services, IConfiguration configuration)
         {
-            // NOTE: MongoDB enum serialization is now configured in Program.cs
-            // via MongoDbConfiguration.Configure() BEFORE this method is called
-
-            // Settings
             services.Configure<MongoDbSettings>(configuration.GetSection("MongoDbSettings"));
             services.Configure<JwtSettings>(configuration.GetSection("JwtSettings"));
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 
-            // Database Context
             services.AddSingleton<IMongoDbContext, MongoDbContext>();
 
-            // Repositories
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<IAdminInvitationRepository, AdminInvitationRepository>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+            services.AddScoped<IDepartmentRepository, DepartmentRepository>();
 
-            // Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAdminManagementService, AdminManagementService>();
+            services.AddScoped<IDepartmentService, DepartmentService>();
 
-            // Helpers
             services.AddScoped<JwtHelper>();
 
-            // Seeders
             services.AddScoped<InitialDataSeeder>();
 
-            // Migrations - ADD THIS LINE
+        
             services.AddScoped<EnumMigrationService>();
 
-            // Validators
             services.AddFluentValidationAutoValidation();
             services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
