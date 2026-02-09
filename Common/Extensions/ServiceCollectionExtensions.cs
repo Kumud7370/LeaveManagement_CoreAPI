@@ -39,12 +39,16 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.AddScoped<IEmployeeRepository, EmployeeRepository>();
             services.AddScoped<IAdminInvitationRepository, AdminInvitationRepository>();
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+            services.AddScoped<ILeaveRepository, LeaveRepository>();
+            services.AddScoped<ILeaveTypeRepository, LeaveTypeRepository>();
 
             // Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IAdminManagementService, AdminManagementService>();
+            services.AddScoped<ILeaveService, LeaveService>();
+            services.AddScoped<ILeaveTypeService, LeaveTypeService>();
 
             // Helpers
             services.AddScoped<JwtHelper>();
