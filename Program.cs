@@ -2,8 +2,8 @@ using AttendanceManagementSystem.Common.Extensions;
 using AttendanceManagementSystem.Common.Configuration;
 using System.Text.Json.Serialization;
 
-// CRITICAL: Configure MongoDB FIRST before anything else
-MongoDbConfiguration.Configure();
+//// CRITICAL: Configure MongoDB FIRST before anything else
+//MongoDbConfiguration.Configure();
 
 var builder = WebApplication.CreateBuilder(args);
 
