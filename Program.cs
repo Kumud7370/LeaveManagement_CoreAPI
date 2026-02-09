@@ -1,13 +1,12 @@
 using AttendanceManagementSystem.Common.Extensions;
 using System.Text.Json.Serialization;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // This converts all enums to strings in JSON responses
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
@@ -48,6 +47,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Run database migrations BEFORE seeding data
+await app.RunDatabaseMigrationsAsync();
 
 // Seed initial data
 await app.SeedDataAsync();
