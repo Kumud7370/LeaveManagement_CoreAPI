@@ -3,6 +3,7 @@ using AttendanceManagementSystem.Common.Helpers;
 using AttendanceManagementSystem.Data.Implementations;
 using AttendanceManagementSystem.Data.Interfaces;
 using AttendanceManagementSystem.Data.Seeders;
+using AttendanceManagementSystem.Data.Migrations;  // ADD THIS
 using AttendanceManagementSystem.Models.Settings;
 using AttendanceManagementSystem.Repositories.Implementations;
 using AttendanceManagementSystem.Repositories.Interfaces;
@@ -14,10 +15,6 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization;
-using MongoDB.Bson.Serialization.Serializers;
-using AttendanceManagementSystem.Models.Enums;
 
 namespace AttendanceManagementSystem.Common.Extensions
 {
@@ -25,8 +22,8 @@ namespace AttendanceManagementSystem.Common.Extensions
     {
         public static IServiceCollection AddCustomServices(this IServiceCollection services, IConfiguration configuration)
         {
-            // Configure MongoDB enum serialization FIRST (before any MongoDB operations)
-            ConfigureMongoDbEnumSerialization();
+            // NOTE: MongoDB enum serialization is now configured in Program.cs
+            // via MongoDbConfiguration.Configure() BEFORE this method is called
 
             // Settings
             services.Configure<MongoDbSettings>(configuration.GetSection("MongoDbSettings"));
@@ -55,23 +52,14 @@ namespace AttendanceManagementSystem.Common.Extensions
             // Seeders
             services.AddScoped<InitialDataSeeder>();
 
+            // Migrations - ADD THIS LINE
+            services.AddScoped<EnumMigrationService>();
+
             // Validators
             services.AddFluentValidationAutoValidation();
             services.AddValidatorsFromAssemblyContaining<LoginRequestValidator>();
 
             return services;
-        }
-
-        // NEW METHOD: Configure MongoDB to serialize enums as strings
-        private static void ConfigureMongoDbEnumSerialization()
-        {
-            // Check if already registered to avoid duplicate registration errors
-            if (!BsonSerializer.SerializerRegistry.GetSerializer<Gender>().GetType().Name.Contains("EnumSerializer"))
-            {
-                BsonSerializer.RegisterSerializer(new EnumSerializer<Gender>(BsonType.String));
-                BsonSerializer.RegisterSerializer(new EnumSerializer<EmploymentType>(BsonType.String));
-                BsonSerializer.RegisterSerializer(new EnumSerializer<EmployeeStatus>(BsonType.String));
-            }
         }
 
         public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
