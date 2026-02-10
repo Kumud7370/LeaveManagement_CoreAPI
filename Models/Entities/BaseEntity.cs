@@ -10,10 +10,12 @@ namespace AttendanceManagementSystem.Models.Entities
         public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
 
         [BsonElement("createdAt")]
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         [BsonElement("updatedAt")]
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
+        public DateTime? UpdatedAt { get; set; }
 
         [BsonElement("isDeleted")]
         public bool IsDeleted { get; set; } = false;

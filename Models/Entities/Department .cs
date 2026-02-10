@@ -5,7 +5,7 @@ namespace AttendanceManagementSystem.Models.Entities
 {
     public class Department : BaseEntity
     {
-        [BsonId]
+        [BsonElement("departmentId")]
         [BsonRepresentation(BsonType.String)]
         public Guid DepartmentId { get; set; }
 
@@ -31,9 +31,6 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 
-        [BsonElement("isDeleted")]
-        public bool IsDeleted { get; set; } = false;
-
         [BsonElement("displayOrder")]
         public int DisplayOrder { get; set; } = 0;
 
@@ -41,20 +38,10 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonIgnoreIfNull]
         public Dictionary<string, object>? Metadata { get; set; }
 
-        // Audit fields
-        [BsonElement("createdAt")]
-        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        public DateTime CreatedAt { get; set; }
-
         [BsonElement("createdBy")]
         [BsonRepresentation(BsonType.String)]
         [BsonIgnoreIfNull]
         public Guid? CreatedBy { get; set; }
-
-        [BsonElement("updatedAt")]
-        [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
-        [BsonIgnoreIfNull]
-        public DateTime? UpdatedAt { get; set; }
 
         [BsonElement("updatedBy")]
         [BsonRepresentation(BsonType.String)]
@@ -71,7 +58,6 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonIgnoreIfNull]
         public Guid? DeletedBy { get; set; }
 
-        // Navigation Properties (not stored in MongoDB)
         [BsonIgnore]
         public virtual ICollection<Employee>? Employees { get; set; }
 
@@ -84,7 +70,6 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonIgnore]
         public virtual Employee? DepartmentHead { get; set; }
 
-        // Computed Properties
         [BsonIgnore]
         public string FullPath => GetFullPath();
 
@@ -95,6 +80,7 @@ namespace AttendanceManagementSystem.Models.Entities
         {
             DepartmentId = Guid.NewGuid();
             CreatedAt = DateTime.UtcNow;
+            Id = ObjectId.GenerateNewId().ToString(); 
         }
 
         private string GetFullPath()
