@@ -18,9 +18,6 @@
         public DateTime? UpdatedAt { get; set; }
     }
 
-    /// <summary>
-    /// Detailed department response with additional information
-    /// </summary>
     public class DepartmentDetailResponseDto : DepartmentResponseDto
     {
         public string FullPath { get; set; } = string.Empty;
@@ -31,9 +28,6 @@
         public AuditInfoDto? AuditInfo { get; set; }
     }
 
-    /// <summary>
-    /// Hierarchical department structure
-    /// </summary>
     public class DepartmentHierarchyDto
     {
         public Guid DepartmentId { get; set; }
@@ -44,9 +38,6 @@
         public List<DepartmentHierarchyDto>? Children { get; set; }
     }
 
-    /// <summary>
-    /// Summary of employee information
-    /// </summary>
     public class EmployeeSummaryDto
     {
         public Guid EmployeeId { get; set; }
@@ -57,9 +48,6 @@
         public string? ProfileImageUrl { get; set; }
     }
 
-    /// <summary>
-    /// Audit information
-    /// </summary>
     public class AuditInfoDto
     {
         public DateTime CreatedAt { get; set; }

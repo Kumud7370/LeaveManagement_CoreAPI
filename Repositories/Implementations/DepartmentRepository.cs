@@ -50,7 +50,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             var filterBuilder = Builders<Department>.Filter;
             var filters = new List<FilterDefinition<Department>>();
 
-      
             if (!filter.IncludeDeleted)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsDeleted, false));
@@ -61,7 +60,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 var searchFilter = filterBuilder.Or(
                     filterBuilder.Regex(x => x.DepartmentCode, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
                     filterBuilder.Regex(x => x.DepartmentName, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
-                    filterBuilder.Regex(x => x.Description, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"))
+                    filterBuilder.Regex(x => x.Description, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm ?? "", "i"))
                 );
                 filters.Add(searchFilter);
             }
@@ -92,11 +91,10 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-          
             var sortBuilder = Builders<Department>.Sort;
-            var sortDirection = filter.SortDirection.ToLower();
+            var sortDirection = filter.SortDirection?.ToLower() ?? "asc";
 
-            SortDefinition<Department> sort = filter.SortBy.ToLower() switch
+            SortDefinition<Department> sort = (filter.SortBy?.ToLower() ?? "departmentname") switch
             {
                 "departmentcode" => sortDirection == "desc"
                     ? sortBuilder.Descending(x => x.DepartmentCode)
@@ -163,7 +161,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
         }
 
         public async Task<int> GetEmployeeCountByDepartmentAsync(Guid departmentId)
-        { 
+        {
             var departmentIdString = departmentId.ToString();
 
             return (int)await _employeeCollection
