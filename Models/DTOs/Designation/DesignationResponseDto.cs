@@ -1,0 +1,15 @@
+﻿namespace AttendanceManagementSystem.Models.DTOs.Designation
+{
+    public class DesignationResponseDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string DesignationCode { get; set; } = string.Empty;
+        public string DesignationName { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public int Level { get; set; }
+        public bool IsActive { get; set; }
+        public int EmployeeCount { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+    }
+}
