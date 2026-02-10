@@ -35,6 +35,7 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             services.AddScoped<ILeaveRepository, LeaveRepository>();
             services.AddScoped<ILeaveTypeRepository, LeaveTypeRepository>();
+            services.AddScoped<ILeaveBalanceRepository, LeaveBalanceRepository>();
             services.AddScoped<IAttendanceRepository, AttendanceRepository>();
             services.AddScoped<IDepartmentRepository, DepartmentRepository>();
             services.AddScoped<IShiftRepository, ShiftRepository>();
@@ -46,6 +47,7 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.AddScoped<IAdminManagementService, AdminManagementService>();
             services.AddScoped<ILeaveService, LeaveService>();
             services.AddScoped<ILeaveTypeService, LeaveTypeService>();
+            services.AddScoped<ILeaveBalanceService, LeaveBalanceService>();
             services.AddScoped<IAttendanceService, AttendanceService>();
             services.AddScoped<IDepartmentService, DepartmentService>();
             services.AddScoped<IShiftService, ShiftService>();
