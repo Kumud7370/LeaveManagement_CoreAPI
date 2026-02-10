@@ -20,4 +20,20 @@
         Manual = 4,
         RFID = 5
     }
+
+    public enum RegularizationType
+    {
+        MissedPunch = 1,
+        LateEntry = 2,
+        EarlyExit = 3,
+        FullDayRegularization = 4
+    }
+
+    public enum RegularizationStatus
+    {
+        Pending = 1,
+        Approved = 2,
+        Rejected = 3,
+        Cancelled = 4
+    }
 }
