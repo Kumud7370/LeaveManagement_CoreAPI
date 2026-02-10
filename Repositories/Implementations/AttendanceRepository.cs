@@ -70,13 +70,13 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Employee filter
+           
             if (!string.IsNullOrWhiteSpace(filter.EmployeeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.EmployeeId, filter.EmployeeId));
             }
 
-            // Date range filter
+           
             if (filter.StartDate.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.AttendanceDate, filter.StartDate.Value.Date));
@@ -87,25 +87,25 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.AttendanceDate, filter.EndDate.Value.Date.AddDays(1)));
             }
 
-            // Status filter
+           
             if (filter.Status.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.Status, filter.Status.Value));
             }
 
-            // Late filter
+           
             if (filter.IsLate.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsLate, filter.IsLate.Value));
             }
 
-            // Early leave filter
+          
             if (filter.IsEarlyLeave.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsEarlyLeave, filter.IsEarlyLeave.Value));
             }
 
-            // Check-in method filter
+           
             if (filter.CheckInMethod.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.CheckInMethod, filter.CheckInMethod.Value));
@@ -113,10 +113,10 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
+          
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
+          
             var sortBuilder = Builders<Attendance>.Sort;
             SortDefinition<Attendance> sort = filter.SortBy.ToLower() switch
             {
@@ -128,7 +128,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.AttendanceDate) : sortBuilder.Ascending(x => x.AttendanceDate)
             };
 
-            // Get paginated items
+           
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)

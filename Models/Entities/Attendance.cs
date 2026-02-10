@@ -27,6 +27,7 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("overtimeHours")]
         public double? OvertimeHours { get; set; }
 
+        [BsonElement("status")]  // ADD THIS LINE
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public AttendanceStatus Status { get; set; }
 
@@ -82,7 +83,7 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? DeletedAt { get; set; }
 
-        // Calculated properties
+      
         public double CalculateWorkingHours()
         {
             if (CheckInTime.HasValue && CheckOutTime.HasValue)
