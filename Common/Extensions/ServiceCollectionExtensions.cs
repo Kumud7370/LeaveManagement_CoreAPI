@@ -41,6 +41,7 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.AddScoped<IShiftRepository, ShiftRepository>();
             services.AddScoped<IEmployeeShiftRepository, EmployeeShiftRepository>();
             services.AddScoped<IDesignationRepository, DesignationRepository>();
+            services.AddScoped<IHolidayRepository, HolidayRepository>();
 
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IEmployeeService, EmployeeService>();
@@ -54,6 +55,7 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.AddScoped<IShiftService, ShiftService>();
             services.AddScoped<IEmployeeShiftService, EmployeeShiftService>();
             services.AddScoped<IDesignationService, DesignationService>();
+            services.AddScoped<IHolidayService, HolidayService>();
 
             services.AddScoped<JwtHelper>();
 
