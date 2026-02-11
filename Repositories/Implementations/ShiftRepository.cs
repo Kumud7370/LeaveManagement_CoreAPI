@@ -44,7 +44,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Search term filter
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Or(
@@ -55,13 +54,11 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(searchFilter);
             }
 
-            // Active filter
             if (filter.IsActive.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsActive, filter.IsActive.Value));
             }
 
-            // Night shift filter
             if (filter.IsNightShift.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsNightShift, filter.IsNightShift.Value));
@@ -69,10 +66,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<Shift>.Sort;
             SortDefinition<Shift> sort = filter.SortBy.ToLower() switch
             {
@@ -83,7 +78,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.DisplayOrder) : sortBuilder.Ascending(x => x.DisplayOrder)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)
@@ -137,7 +131,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var existingShifts = await _collection.Find(filter).ToListAsync();
 
-            // Check for overlaps
             foreach (var shift in existingShifts)
             {
                 if (TimesOverlap(startTime, endTime, shift.StartTime, shift.EndTime))
@@ -149,20 +142,18 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         private bool TimesOverlap(TimeOnly start1, TimeOnly end1, TimeOnly start2, TimeOnly end2)
         {
-            // Handle night shifts (crossing midnight)
-            if (end1 < start1) // First shift crosses midnight
+            if (end1 < start1) 
             {
-                if (end2 < start2) // Second shift also crosses midnight
-                    return true; // Both cross midnight, they overlap
+                if (end2 < start2) 
+                    return true; 
                 return start2 >= start1 || end2 <= end1;
             }
 
-            if (end2 < start2) // Second shift crosses midnight
+            if (end2 < start2) 
             {
                 return start1 >= start2 || end1 <= end2;
             }
 
-            // Normal case: neither crosses midnight
             return start1 < end2 && end1 > start2;
         }
     }

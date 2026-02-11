@@ -21,25 +21,21 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Employee filter
             if (!string.IsNullOrWhiteSpace(filter.EmployeeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.EmployeeId, filter.EmployeeId));
             }
 
-            // Shift filter
             if (!string.IsNullOrWhiteSpace(filter.ShiftId))
             {
                 filters.Add(filterBuilder.Eq(x => x.ShiftId, filter.ShiftId));
             }
 
-            // Status filter
             if (filter.Status.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.Status, filter.Status.Value));
             }
 
-            // Effective date range filter
             if (filter.EffectiveFromStart.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.EffectiveFrom, filter.EffectiveFromStart.Value));
@@ -50,13 +46,11 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.EffectiveFrom, filter.EffectiveFromEnd.Value));
             }
 
-            // Active filter
             if (filter.IsActive.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsActive, filter.IsActive.Value));
             }
 
-            // Only current assignments
             if (filter.OnlyCurrentAssignments == true)
             {
                 var today = DateTime.UtcNow.Date;
@@ -73,10 +67,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<EmployeeShift>.Sort;
             SortDefinition<EmployeeShift> sort = filter.SortBy.ToLower() switch
             {
@@ -87,7 +79,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.EffectiveFrom) : sortBuilder.Ascending(x => x.EffectiveFrom)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)
@@ -178,11 +169,9 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.In(x => x.Status, new[] { ShiftChangeStatus.Pending, ShiftChangeStatus.Approved })
             };
 
-            // Check for overlap
             if (effectiveTo.HasValue)
             {
                 filters.Add(filterBuilder.Or(
-                    // New range starts during existing range
                     filterBuilder.And(
                         filterBuilder.Lte(x => x.EffectiveFrom, effectiveFrom),
                         filterBuilder.Or(
@@ -190,7 +179,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                             filterBuilder.Gte(x => x.EffectiveTo, effectiveFrom)
                         )
                     ),
-                    // New range ends during existing range
+                   
                     filterBuilder.And(
                         filterBuilder.Lte(x => x.EffectiveFrom, effectiveTo),
                         filterBuilder.Or(
@@ -198,7 +187,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                             filterBuilder.Gte(x => x.EffectiveTo, effectiveFrom)
                         )
                     ),
-                    // Existing range is completely within new range
+                   
                     filterBuilder.And(
                         filterBuilder.Gte(x => x.EffectiveFrom, effectiveFrom),
                         filterBuilder.Lte(x => x.EffectiveFrom, effectiveTo)
@@ -207,7 +196,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             }
             else
             {
-                // Indefinite assignment - check if any existing assignment overlaps
                 filters.Add(filterBuilder.Or(
                     filterBuilder.Eq(x => x.EffectiveTo, null),
                     filterBuilder.Gte(x => x.EffectiveTo, effectiveFrom)

@@ -17,7 +17,6 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<DesignationResponseDto?> CreateDesignationAsync(CreateDesignationDto dto, string createdBy)
         {
-            // Check if designation code already exists
             if (await _designationRepository.IsDesignationCodeExistsAsync(dto.DesignationCode))
                 return null;
 
@@ -97,14 +96,12 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (designation == null)
                 return null;
 
-            // Check if designation code is being updated and if it already exists
             if (!string.IsNullOrEmpty(dto.DesignationCode) && dto.DesignationCode != designation.DesignationCode)
             {
                 if (await _designationRepository.IsDesignationCodeExistsAsync(dto.DesignationCode, id))
                     return null;
             }
 
-            // Update only provided fields
             if (!string.IsNullOrEmpty(dto.DesignationCode))
                 designation.DesignationCode = dto.DesignationCode;
 
@@ -132,10 +129,9 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (designation == null)
                 return false;
 
-            // Check if designation is assigned to any employees
             var employeeCount = await _designationRepository.GetEmployeeCountByDesignationAsync(id);
             if (employeeCount > 0)
-                return false; // Cannot delete designation that is in use
+                return false; 
 
             designation.UpdatedBy = deletedBy;
             designation.DeletedAt = DateTime.UtcNow;

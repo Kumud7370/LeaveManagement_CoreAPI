@@ -25,21 +25,17 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<EmployeeShiftResponseDto?> CreateEmployeeShiftAsync(CreateEmployeeShiftDto dto, string createdBy)
         {
-            // Validate employee exists
             var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
             if (employee == null)
                 return null;
 
-            // Validate shift exists and is active
             var shift = await _shiftRepository.GetByIdAsync(dto.ShiftId);
             if (shift == null || !shift.IsActive)
                 return null;
 
-            // Check for overlapping shift assignments
             if (await _employeeShiftRepository.HasOverlappingShiftAssignmentAsync(dto.EmployeeId, dto.EffectiveFrom, dto.EffectiveTo))
                 return null;
 
-            // Check pending shift changes limit (max 3)
             var pendingCount = await _employeeShiftRepository.GetPendingShiftChangesCountForEmployeeAsync(dto.EmployeeId);
             if (pendingCount >= 3)
                 return null;
@@ -136,7 +132,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (employeeShift == null || !employeeShift.CanBeModified())
                 return null;
 
-            // Update only provided fields
             if (!string.IsNullOrEmpty(dto.ShiftId))
             {
                 var shift = await _shiftRepository.GetByIdAsync(dto.ShiftId);
@@ -154,7 +149,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (!string.IsNullOrEmpty(dto.ChangeReason))
                 employeeShift.ChangeReason = dto.ChangeReason;
 
-            // Check for overlapping assignments if dates changed
             if (dto.EffectiveFrom.HasValue || dto.EffectiveTo.HasValue)
             {
                 if (await _employeeShiftRepository.HasOverlappingShiftAssignmentAsync(
@@ -189,7 +183,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (employeeShift == null || employeeShift.Status != ShiftChangeStatus.Pending)
                 return false;
 
-            // Deactivate any overlapping shift assignments
             var overlappingShifts = await _employeeShiftRepository.GetByEmployeeIdAsync(employeeShift.EmployeeId);
             foreach (var overlap in overlappingShifts)
             {
@@ -198,7 +191,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                     overlap.IsActive &&
                     !overlap.EffectiveTo.HasValue)
                 {
-                    // Set end date to one day before new shift starts
                     overlap.EffectiveTo = employeeShift.EffectiveFrom.AddDays(-1);
                     await _employeeShiftRepository.UpdateAsync(overlap.Id, overlap);
                 }
@@ -254,12 +246,10 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<bool> ValidateShiftAssignmentAsync(string employeeId, DateTime effectiveFrom, DateTime? effectiveTo, string? excludeId = null)
         {
-            // Check employee exists
             var employee = await _employeeRepository.GetByIdAsync(employeeId);
             if (employee == null)
                 return false;
 
-            // Check for overlapping assignments
             return !await _employeeShiftRepository.HasOverlappingShiftAssignmentAsync(employeeId, effectiveFrom, effectiveTo, excludeId);
         }
 

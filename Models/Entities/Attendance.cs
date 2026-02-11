@@ -82,7 +82,6 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? DeletedAt { get; set; }
 
-        // Calculated properties
         public double CalculateWorkingHours()
         {
             if (CheckInTime.HasValue && CheckOutTime.HasValue)

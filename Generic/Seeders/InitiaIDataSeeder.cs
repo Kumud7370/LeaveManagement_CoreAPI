@@ -98,6 +98,7 @@ namespace AttendanceManagementSystem.Data.Seeders
                 return;
             }
 
+            //Username : superadmin
             // Password: SuperAdmin@123
             var superAdminUser = new User
             {

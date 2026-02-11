@@ -20,7 +20,7 @@ namespace AttendanceManagementSystem.Models.Entities
         public string InvitedByName { get; set; } = string.Empty;
 
         [BsonElement("status")]
-        public string Status { get; set; } = "Pending"; // Pending, Accepted, Revoked
+        public string Status { get; set; } = "Pending"; 
 
         [BsonElement("expiresAt")]
         public DateTime ExpiresAt { get; set; }

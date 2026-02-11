@@ -177,7 +177,6 @@ namespace AttendanceManagementSystem.Controllers
         }
     }
 
-    // Helper DTOs for request bodies
     public class RejectLeaveRequestDto
     {
         public string RejectionReason { get; set; } = string.Empty;
@@ -187,7 +186,6 @@ namespace AttendanceManagementSystem.Controllers
     {
         public string CancellationReason { get; set; } = string.Empty;
     }
-
     public class ValidateLeaveRequestDto
     {
         public string EmployeeId { get; set; } = string.Empty;

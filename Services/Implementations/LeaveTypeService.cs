@@ -17,11 +17,9 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<LeaveTypeResponseDto?> CreateLeaveTypeAsync(CreateLeaveTypeDto dto, string createdBy)
         {
-            // Check if code already exists
             if (await _leaveTypeRepository.IsCodeExistsAsync(dto.Code))
                 return null;
 
-            // Get next display order if not provided
             if (dto.DisplayOrder == 0)
             {
                 var maxOrder = await _leaveTypeRepository.GetMaxDisplayOrderAsync();
@@ -87,14 +85,12 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (leaveType == null)
                 return null;
 
-            // Check if code is being updated and if it already exists
             if (!string.IsNullOrEmpty(dto.Code) && dto.Code != leaveType.Code)
             {
                 if (await _leaveTypeRepository.IsCodeExistsAsync(dto.Code, id))
                     return null;
             }
 
-            // Update only provided fields
             if (!string.IsNullOrEmpty(dto.Name))
                 leaveType.Name = dto.Name;
 

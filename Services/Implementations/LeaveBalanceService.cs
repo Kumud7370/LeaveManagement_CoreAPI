@@ -24,21 +24,17 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<LeaveBalanceResponseDto?> CreateLeaveBalanceAsync(CreateLeaveBalanceDto dto, string createdBy)
         {
-            // Validate employee exists
             var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
             if (employee == null)
                 return null;
 
-            // Validate leave type exists and is active
             var leaveType = await _leaveTypeRepository.GetByIdAsync(dto.LeaveTypeId);
             if (leaveType == null || !leaveType.IsActive)
                 return null;
 
-            // Check if balance already exists
             if (await _leaveBalanceRepository.ExistsAsync(dto.EmployeeId, dto.LeaveTypeId, dto.Year))
                 return null;
 
-            // Validate carried forward doesn't exceed limit
             if (dto.CarriedForward > 0 && leaveType.IsCarryForward)
             {
                 if (dto.CarriedForward > leaveType.MaxCarryForwardDays)
@@ -46,7 +42,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             else if (dto.CarriedForward > 0 && !leaveType.IsCarryForward)
             {
-                return null; // Cannot carry forward if leave type doesn't allow it
+                return null; 
             }
 
             var leaveBalance = new LeaveBalance
@@ -166,7 +162,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (balance == null)
                 return null;
 
-            // Update only provided fields
             if (dto.TotalAllocated.HasValue)
                 balance.TotalAllocated = dto.TotalAllocated.Value;
 
@@ -181,7 +176,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                     if (dto.CarriedForward.Value <= leaveType.MaxCarryForwardDays)
                         balance.CarriedForward = dto.CarriedForward.Value;
                     else
-                        return null; // Exceeds carry forward limit
+                        return null; 
                 }
             }
 
@@ -210,10 +205,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (balance == null)
                 return false;
 
-            // Apply adjustment to total allocated (can be positive or negative)
             balance.TotalAllocated += dto.AdjustmentAmount;
 
-            // Ensure total allocated doesn't go below consumed
             if (balance.TotalAllocated < balance.Consumed)
                 return false;
 
@@ -248,14 +241,12 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<bool> CarryForwardLeaveAsync(CarryForwardDto dto, string performedBy)
         {
-            // Get source year balance
             var sourceBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
                 dto.EmployeeId, dto.LeaveTypeId, dto.FromYear);
 
             if (sourceBalance == null || sourceBalance.Available < dto.CarryForwardDays)
                 return false;
 
-            // Validate leave type allows carry forward
             var leaveType = await _leaveTypeRepository.GetByIdAsync(dto.LeaveTypeId);
             if (leaveType == null || !leaveType.IsCarryForward)
                 return false;
@@ -263,13 +254,11 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (dto.CarryForwardDays > leaveType.MaxCarryForwardDays)
                 return false;
 
-            // Get or create target year balance
             var targetBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
                 dto.EmployeeId, dto.LeaveTypeId, dto.ToYear);
 
             if (targetBalance == null)
             {
-                // Create new balance for target year
                 var createDto = new CreateLeaveBalanceDto
                 {
                     EmployeeId = dto.EmployeeId,
@@ -283,7 +272,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             else
             {
-                // Update existing balance
                 targetBalance.CarriedForward += dto.CarryForwardDays;
                 targetBalance.UpdateAvailableBalance();
                 targetBalance.UpdatedBy = performedBy;
@@ -329,12 +317,10 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             foreach (var leaveType in activeLeaveTypes)
             {
-                // Check if balance already exists
                 var exists = await _leaveBalanceRepository.ExistsAsync(employeeId, leaveType.Id, year);
                 if (exists)
                     continue;
 
-                // Calculate carry forward from previous year if applicable
                 decimal carriedForward = 0;
                 if (leaveType.IsCarryForward && year > 2000)
                 {

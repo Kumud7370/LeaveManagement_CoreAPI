@@ -12,12 +12,10 @@ builder.Services.AddControllers()
 
 builder.Services.AddEndpointsApiExplorer();
 
-// Custom services
 builder.Services.AddCustomServices(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddSwaggerDocumentation();
 
-// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -30,7 +28,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -48,10 +45,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// Run database migrations BEFORE seeding data
 await app.RunDatabaseMigrationsAsync();
 
-// Seed initial data
 await app.SeedDataAsync();
 
 app.Run();

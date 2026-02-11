@@ -23,9 +23,6 @@ namespace AttendanceManagementSystem.Controllers
             return User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
         }
 
-        /// <summary>
-        /// Create a new designation
-        /// </summary>
         [HttpPost]
         public async Task<IActionResult> CreateDesignation([FromBody] CreateDesignationDto dto)
         {
@@ -42,9 +39,6 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
-        /// <summary>
-        /// Get designation by ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> GetDesignationById(string id)
         {
@@ -60,9 +54,6 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
-        /// <summary>
-        /// Get designation by code
-        /// </summary>
         [HttpGet("code/{code}")]
         public async Task<IActionResult> GetDesignationByCode(string code)
         {
@@ -78,9 +69,6 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
-        /// <summary>
-        /// Get filtered designations with pagination
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> GetFilteredDesignations([FromQuery] DesignationFilterDto filter)
         {
@@ -100,9 +88,6 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
-        /// <summary>
-        /// Get all active designations
-        /// </summary>
         [HttpGet("active")]
         public async Task<IActionResult> GetActiveDesignations()
         {
@@ -115,9 +100,6 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
-        /// <summary>
-        /// Get designations by level
-        /// </summary>
         [HttpGet("level/{level}")]
         public async Task<IActionResult> GetDesignationsByLevel(int level)
         {
@@ -130,9 +112,6 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
-        /// <summary>
-        /// Update designation
-        /// </summary>
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateDesignation(string id, [FromBody] UpdateDesignationDto dto)
         {
@@ -149,9 +128,6 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
-        /// <summary>
-        /// Delete designation (soft delete)
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDesignation(string id)
         {
@@ -164,9 +140,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(new { message = "Designation deleted successfully" });
         }
 
-        /// <summary>
-        /// Toggle designation active status
-        /// </summary>
         [HttpPatch("{id}/toggle-status")]
         public async Task<IActionResult> ToggleDesignationStatus(string id)
         {
@@ -179,9 +152,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(new { message = "Designation status toggled successfully" });
         }
 
-        /// <summary>
-        /// Get designation statistics by level
-        /// </summary>
         [HttpGet("statistics/by-level")]
         public async Task<IActionResult> GetDesignationStatisticsByLevel()
         {

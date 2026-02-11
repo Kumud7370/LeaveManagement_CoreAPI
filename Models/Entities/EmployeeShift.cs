@@ -60,7 +60,6 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? DeletedAt { get; set; }
 
-        // Helper Methods
         public bool IsCurrentlyActive()
         {
             var today = DateTime.UtcNow.Date;
@@ -79,7 +78,7 @@ namespace AttendanceManagementSystem.Models.Entities
         public int GetDurationInDays()
         {
             if (!EffectiveTo.HasValue)
-                return -1; // Indefinite
+                return -1; 
 
             return (EffectiveTo.Value.Date - EffectiveFrom.Date).Days + 1;
         }

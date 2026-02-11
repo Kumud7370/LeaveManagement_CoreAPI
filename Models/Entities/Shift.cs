@@ -21,7 +21,7 @@ namespace AttendanceManagementSystem.Models.Entities
         public int GracePeriodMinutes { get; set; } = 0;
 
         [BsonElement("minimumWorkingMinutes")]
-        public int MinimumWorkingMinutes { get; set; } = 480; // 8 hours default
+        public int MinimumWorkingMinutes { get; set; } = 480; 
 
         [BsonElement("breakDurationMinutes")]
         public int BreakDurationMinutes { get; set; } = 60;

@@ -35,7 +35,6 @@ namespace AttendanceManagementSystem.Models.ValueObjects
                 : $"{Latitude}, {Longitude}";
         }
 
-        // Calculate distance between two locations in kilometers
         public double DistanceFrom(Location other)
         {
             const double earthRadiusKm = 6371.0;
