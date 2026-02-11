@@ -47,7 +47,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Search term filter
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Or(
@@ -58,19 +57,16 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(searchFilter);
             }
 
-            // IsActive filter
             if (filter.IsActive.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsActive, filter.IsActive.Value));
             }
 
-            // Level filter
             if (filter.Level.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.Level, filter.Level.Value));
             }
 
-            // Level range filter
             if (filter.MinLevel.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.Level, filter.MinLevel.Value));
@@ -83,10 +79,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<Designation>.Sort;
             SortDefinition<Designation> sort = filter.SortBy.ToLower() switch
             {
@@ -96,7 +90,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.DesignationCode) : sortBuilder.Ascending(x => x.DesignationCode)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)

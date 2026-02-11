@@ -38,14 +38,10 @@ namespace AttendanceManagementSystem.Validators
             if (string.IsNullOrWhiteSpace(name))
                 return false;
 
-            // Allow letters, numbers, spaces, and common punctuation
             return System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9\s&\-\(\)\.]+$");
         }
     }
 
-    /// <summary>
-    /// Validator for UpdateDepartmentRequestDto
-    /// </summary>
     public class UpdateDepartmentValidator : AbstractValidator<UpdateDepartmentRequestDto>
     {
         public UpdateDepartmentValidator()
@@ -89,10 +85,6 @@ namespace AttendanceManagementSystem.Validators
             return System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9\s&\-\(\)\.]+$");
         }
     }
-
-    /// <summary>
-    /// Validator for DepartmentFilterRequestDto
-    /// </summary>
     public class DepartmentFilterValidator : AbstractValidator<DepartmentFilterRequestDto>
     {
         public DepartmentFilterValidator()

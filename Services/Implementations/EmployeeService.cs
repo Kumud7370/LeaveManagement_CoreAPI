@@ -18,11 +18,9 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<EmployeeResponseDto?> CreateEmployeeAsync(CreateEmployeeDto dto, string createdBy)
         {
-            // Check if employee code already exists
             if (await _employeeRepository.IsEmployeeCodeExistsAsync(dto.EmployeeCode))
                 return null;
 
-            // Check if email already exists
             if (await _employeeRepository.IsEmailExistsAsync(dto.Email))
                 return null;
 
@@ -110,14 +108,12 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (employee == null)
                 return null;
 
-            // Check if email is being updated and if it already exists
             if (!string.IsNullOrEmpty(dto.Email) && dto.Email != employee.Email)
             {
                 if (await _employeeRepository.IsEmailExistsAsync(dto.Email, id))
                     return null;
             }
 
-            // Update only provided fields
             if (!string.IsNullOrEmpty(dto.FirstName))
                 employee.FirstName = dto.FirstName;
 

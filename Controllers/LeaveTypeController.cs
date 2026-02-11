@@ -116,7 +116,6 @@ namespace AttendanceManagementSystem.Controllers
         }
     }
 
-    // Helper DTO for request body
     public class ToggleStatusRequestDto
     {
         public bool IsActive { get; set; }

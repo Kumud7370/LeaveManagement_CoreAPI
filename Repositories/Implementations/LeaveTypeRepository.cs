@@ -44,7 +44,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Search term filter
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Or(
@@ -55,25 +54,21 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(searchFilter);
             }
 
-            // Active filter
             if (filter.IsActive.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsActive, filter.IsActive.Value));
             }
 
-            // Requires approval filter
             if (filter.RequiresApproval.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.RequiresApproval, filter.RequiresApproval.Value));
             }
 
-            // Requires document filter
             if (filter.RequiresDocument.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.RequiresDocument, filter.RequiresDocument.Value));
             }
 
-            // Carry forward filter
             if (filter.IsCarryForward.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsCarryForward, filter.IsCarryForward.Value));
@@ -81,10 +76,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<LeaveType>.Sort;
             SortDefinition<LeaveType> sort = filter.SortBy.ToLower() switch
             {
@@ -95,7 +88,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.DisplayOrder) : sortBuilder.Ascending(x => x.DisplayOrder)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)

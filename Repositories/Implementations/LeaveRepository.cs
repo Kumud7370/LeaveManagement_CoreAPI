@@ -21,25 +21,21 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Employee filter
             if (!string.IsNullOrWhiteSpace(filter.EmployeeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.EmployeeId, filter.EmployeeId));
             }
 
-            // Leave type filter
             if (!string.IsNullOrWhiteSpace(filter.LeaveTypeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.LeaveTypeId, filter.LeaveTypeId));
             }
 
-            // Leave status filter
             if (filter.LeaveStatus.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.LeaveStatus, filter.LeaveStatus.Value));
             }
 
-            // Start date range filter
             if (filter.StartDateFrom.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.StartDate, filter.StartDateFrom.Value));
@@ -50,7 +46,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.StartDate, filter.StartDateTo.Value));
             }
 
-            // End date range filter
             if (filter.EndDateFrom.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.EndDate, filter.EndDateFrom.Value));
@@ -61,7 +56,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.EndDate, filter.EndDateTo.Value));
             }
 
-            // Applied date range filter
             if (filter.AppliedDateFrom.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.AppliedDate, filter.AppliedDateFrom.Value));
@@ -72,13 +66,11 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.AppliedDate, filter.AppliedDateTo.Value));
             }
 
-            // Emergency leave filter
             if (filter.IsEmergencyLeave.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsEmergencyLeave, filter.IsEmergencyLeave.Value));
             }
 
-            // Search term filter (reason)
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Regex(x => x.Reason, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"));
@@ -87,10 +79,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<Leave>.Sort;
             SortDefinition<Leave> sort = filter.SortBy.ToLower() switch
             {
@@ -102,7 +92,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.AppliedDate) : sortBuilder.Ascending(x => x.AppliedDate)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)

@@ -15,7 +15,6 @@ namespace AttendanceManagementSystem.Common.Extensions
             {
                 logger.LogInformation("🚀 Running database migrations...");
 
-                // Run enum migration
                 var enumMigration = services.GetRequiredService<EnumMigrationService>();
                 await enumMigration.MigrateEnumsToStringsAsync();
 

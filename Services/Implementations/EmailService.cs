@@ -21,7 +21,6 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var subject = "You're Invited to Join Attendance Management System";
 
-            // Update this URL when frontend is ready
             var acceptUrl = $"http://localhost:3000/accept-invitation?token={token}";
 
             var body = $@"

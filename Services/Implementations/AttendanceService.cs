@@ -12,10 +12,9 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly IAttendanceRepository _attendanceRepository;
         private readonly IEmployeeRepository _employeeRepository;
 
-        
-        private readonly TimeSpan _standardCheckInTime = new TimeSpan(9, 0, 0);
+        private readonly TimeSpan _standardCheckInTime = new TimeSpan(9, 0, 0); 
         private readonly TimeSpan _graceperiod = new TimeSpan(0, 15, 0); 
-        private readonly TimeSpan _minimumWorkingHours = new TimeSpan(8, 0, 0); 
+        private readonly TimeSpan _minimumWorkingHours = new TimeSpan(8, 0, 0);
         private readonly TimeSpan _halfDayMinimumHours = new TimeSpan(4, 0, 0); 
         private readonly TimeSpan _standardCheckOutTime = new TimeSpan(18, 0, 0); 
 
@@ -29,12 +28,10 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<AttendanceResponseDto?> CheckInAsync(CheckInDto dto, string createdBy)
         {
-          
             var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
             if (employee == null)
                 return null;
 
-          
             var today = DateTime.UtcNow.Date;
             var existingAttendance = await _attendanceRepository.GetByEmployeeAndDateAsync(dto.EmployeeId, today);
 
@@ -72,7 +69,6 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<AttendanceResponseDto?> CheckOutAsync(CheckOutDto dto, string updatedBy)
         {
-           
             var today = DateTime.UtcNow.Date;
             var attendance = await _attendanceRepository.GetByEmployeeAndDateAsync(dto.EmployeeId, today);
 
@@ -85,12 +81,10 @@ namespace AttendanceManagementSystem.Services.Implementations
             var checkOutTime = dto.CheckOutTime;
             var checkOutTimeOfDay = checkOutTime.TimeOfDay;
 
-            
             var workingHours = attendance.CalculateWorkingHours();
             attendance.CheckOutTime = checkOutTime;
             attendance.WorkingHours = (checkOutTime - attendance.CheckInTime.Value).TotalHours;
 
-            
             var isEarlyLeave = checkOutTimeOfDay < _standardCheckOutTime &&
                                attendance.WorkingHours < _minimumWorkingHours.TotalHours;
             var earlyLeaveMinutes = isEarlyLeave ?
@@ -99,10 +93,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             attendance.IsEarlyLeave = isEarlyLeave;
             attendance.EarlyLeaveMinutes = isEarlyLeave ? earlyLeaveMinutes : null;
 
-            
             attendance.OvertimeHours = attendance.CalculateOvertimeHours(_minimumWorkingHours.TotalHours);
 
-            
             if (attendance.WorkingHours >= _minimumWorkingHours.TotalHours)
             {
                 attendance.Status = AttendanceStatus.Present;
@@ -138,12 +130,10 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<AttendanceResponseDto?> MarkManualAttendanceAsync(ManualAttendanceDto dto, string createdBy)
         {
-            
             var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
             if (employee == null)
                 return null;
 
-           
             var existingAttendance = await _attendanceRepository.GetByEmployeeAndDateAsync(
                 dto.EmployeeId,
                 dto.AttendanceDate.Date);
@@ -163,20 +153,17 @@ namespace AttendanceManagementSystem.Services.Implementations
                 CreatedBy = createdBy
             };
 
-           
             if (dto.CheckInTime.HasValue && dto.CheckOutTime.HasValue)
             {
                 attendance.WorkingHours = (dto.CheckOutTime.Value - dto.CheckInTime.Value).TotalHours;
                 attendance.OvertimeHours = attendance.CalculateOvertimeHours(_minimumWorkingHours.TotalHours);
 
-               
                 var checkInTimeOfDay = dto.CheckInTime.Value.TimeOfDay;
                 var lateThreshold = _standardCheckInTime.Add(_graceperiod);
                 attendance.IsLate = checkInTimeOfDay > lateThreshold;
                 attendance.LateMinutes = attendance.IsLate ?
                     (int)(checkInTimeOfDay - lateThreshold).TotalMinutes : null;
 
-               
                 var checkOutTimeOfDay = dto.CheckOutTime.Value.TimeOfDay;
                 attendance.IsEarlyLeave = checkOutTimeOfDay < _standardCheckOutTime &&
                                          attendance.WorkingHours < _minimumWorkingHours.TotalHours;
@@ -200,7 +187,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             attendance.Remarks = dto.Remarks;
             attendance.UpdatedBy = updatedBy;
 
-            
             if (dto.CheckInTime.HasValue && dto.CheckOutTime.HasValue)
             {
                 attendance.WorkingHours = (dto.CheckOutTime.Value - dto.CheckInTime.Value).TotalHours;
@@ -384,14 +370,11 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task MarkAbsentEmployeesAsync(DateTime date)
         {
-            // Get all active employees
             var activeEmployees = await _employeeRepository.GetActiveEmployeesAsync();
             var activeEmployeeIds = activeEmployees.Select(e => e.Id).ToList();
 
-            // Get absent employees for the date
             var absentRecords = await _attendanceRepository.GetAbsentEmployeesAsync(date, activeEmployeeIds);
 
-            // Insert absent records
             foreach (var record in absentRecords)
             {
                 await _attendanceRepository.CreateAsync(record);

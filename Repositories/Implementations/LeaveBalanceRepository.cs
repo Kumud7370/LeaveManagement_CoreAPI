@@ -79,25 +79,21 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Employee filter
             if (!string.IsNullOrWhiteSpace(filter.EmployeeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.EmployeeId, filter.EmployeeId));
             }
 
-            // Leave type filter
             if (!string.IsNullOrWhiteSpace(filter.LeaveTypeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.LeaveTypeId, filter.LeaveTypeId));
             }
 
-            // Year filter
             if (filter.Year.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.Year, filter.Year.Value));
             }
 
-            // Available balance range filter
             if (filter.MinAvailableBalance.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.Available, filter.MinAvailableBalance.Value));
@@ -108,7 +104,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.Available, filter.MaxAvailableBalance.Value));
             }
 
-            // Consumed balance range filter
             if (filter.MinConsumedBalance.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.Consumed, filter.MinConsumedBalance.Value));
@@ -119,7 +114,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.Consumed, filter.MaxConsumedBalance.Value));
             }
 
-            // Low balance filter
             if (filter.IsLowBalance.HasValue && filter.IsLowBalance.Value)
             {
                 filters.Add(filterBuilder.Lte(x => x.Available, filter.LowBalanceThreshold ?? 2));
@@ -127,10 +121,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<LeaveBalance>.Sort;
             SortDefinition<LeaveBalance> sort = filter.SortBy.ToLower() switch
             {
@@ -143,7 +135,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.Year).Descending(x => x.EmployeeId) : sortBuilder.Ascending(x => x.Year).Ascending(x => x.EmployeeId)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)
