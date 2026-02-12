@@ -69,7 +69,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Search term filter
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Or(
@@ -81,43 +80,36 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(searchFilter);
             }
 
-            // Department filter
             if (!string.IsNullOrWhiteSpace(filter.DepartmentId))
             {
                 filters.Add(filterBuilder.Eq(x => x.DepartmentId, filter.DepartmentId));
             }
 
-            // Designation filter
             if (!string.IsNullOrWhiteSpace(filter.DesignationId))
             {
                 filters.Add(filterBuilder.Eq(x => x.DesignationId, filter.DesignationId));
             }
 
-            // Manager filter
             if (!string.IsNullOrWhiteSpace(filter.ManagerId))
             {
                 filters.Add(filterBuilder.Eq(x => x.ManagerId, filter.ManagerId));
             }
 
-            // Employee status filter
             if (filter.EmployeeStatus.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.EmployeeStatus, filter.EmployeeStatus.Value));
             }
 
-            // Employment type filter
             if (filter.EmploymentType.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.EmploymentType, filter.EmploymentType.Value));
             }
 
-            // Gender filter
             if (filter.Gender.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.Gender, filter.Gender.Value));
             }
 
-            // Joining date range filter
             if (filter.JoiningDateFrom.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.DateOfJoining, filter.JoiningDateFrom.Value));
@@ -130,10 +122,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<Employee>.Sort;
             SortDefinition<Employee> sort = filter.SortBy.ToLower() switch
             {
@@ -145,7 +135,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.EmployeeCode) : sortBuilder.Ascending(x => x.EmployeeCode)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)

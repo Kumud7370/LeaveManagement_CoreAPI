@@ -17,7 +17,6 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly IEmailService _emailService;
         private readonly ILogger<AdminManagementService> _logger;
 
-        // Role hierarchy: SuperAdmin > Admin > Manager > Employee
         private readonly Dictionary<string, List<string>> _roleHierarchy = new()
         {
             { "SuperAdmin", new List<string> { "Admin", "Manager", "Employee" } },
@@ -50,7 +49,6 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             try
             {
-                // Get inviter's roles
                 var inviter = await _userRepository.GetByIdAsync(inviterId);
                 if (inviter == null)
                 {
@@ -61,14 +59,12 @@ namespace AttendanceManagementSystem.Services.Implementations
                 var inviterRoles = await _roleRepository.GetRolesByIdsAsync(inviter.RoleIds);
                 var inviterRoleNames = inviterRoles.Select(r => r.Name).ToList();
 
-                // Check if inviter can invite this role
                 if (!CanInviteRole(inviterRoleNames, dto.Role))
                 {
                     _logger.LogWarning($"User {inviterName} cannot invite role {dto.Role}");
                     return null;
                 }
 
-                // Check if email already exists
                 var existingUser = await _userRepository.GetByEmailAsync(dto.Email);
                 if (existingUser != null)
                 {
@@ -76,7 +72,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return null;
                 }
 
-                // Check if there's already a pending invitation
                 var existingInvitation = await _invitationRepository.GetByEmailAsync(dto.Email);
                 if (existingInvitation != null && existingInvitation.Status == "Pending")
                 {
@@ -84,7 +79,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return null;
                 }
 
-                // Generate secure token
                 var token = GenerateSecureToken();
 
                 var invitation = new AdminInvitation
@@ -101,16 +95,14 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 await _invitationRepository.CreateAsync(invitation);
 
-                // Send invitation email
                 await _emailService.SendInvitationEmailAsync(
                     dto.Email,
-                    dto.Email.Split('@')[0], // Use email prefix as name
+                    dto.Email.Split('@')[0], 
                     token,
                     dto.Role,
                     inviterName
                 );
 
-                // Log audit
                 await LogAuditAsync(
                     inviterId,
                     inviterName,
@@ -168,7 +160,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                 {
                     await _invitationRepository.UpdateAsync(invitationId, invitation);
 
-                    // Log audit
                     var user = await _userRepository.GetByIdAsync(updatedBy);
                     await LogAuditAsync(
                         updatedBy,
@@ -206,7 +197,6 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 await _invitationRepository.UpdateAsync(invitationId, invitation);
 
-                // Log audit
                 var user = await _userRepository.GetByIdAsync(revokedBy);
                 await LogAuditAsync(
                     revokedBy,
@@ -239,7 +229,6 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 await _invitationRepository.DeleteAsync(invitationId);
 
-                // Log audit
                 var user = await _userRepository.GetByIdAsync(deletedBy);
                 await LogAuditAsync(
                     deletedBy,
@@ -316,7 +305,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return false;
                 }
 
-                // Check if username already exists
                 var existingUser = await _userRepository.GetByUsernameAsync(dto.Username);
                 if (existingUser != null)
                 {
@@ -324,7 +312,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return false;
                 }
 
-                // Get role
                 var role = await _roleRepository.GetByNameAsync(invitation.InvitedRole);
                 if (role == null)
                 {
@@ -332,7 +319,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return false;
                 }
 
-                // Create user
                 var newUser = new User
                 {
                     Username = dto.Username,
@@ -346,19 +332,16 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 await _userRepository.CreateAsync(newUser);
 
-                // Update invitation
                 invitation.Status = "Accepted";
                 invitation.AcceptedAt = DateTime.UtcNow;
                 await _invitationRepository.UpdateAsync(invitation.Id, invitation);
 
-                // Send welcome email
                 await _emailService.SendWelcomeEmailAsync(
                     newUser.Email,
                     newUser.Username,
                     invitation.InvitedRole
                 );
 
-                // Log audit
                 await LogAuditAsync(
                     newUser.Id,
                     newUser.Username,

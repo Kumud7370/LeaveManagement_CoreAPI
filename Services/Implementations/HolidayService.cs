@@ -18,7 +18,6 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<HolidayResponseDto?> CreateHolidayAsync(CreateHolidayDto dto, string createdBy)
         {
-            // Check if holiday already exists
             if (await _holidayRepository.IsHolidayExistsAsync(dto.HolidayName, dto.HolidayDate))
                 return null;
 
@@ -99,7 +98,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (holiday == null)
                 return null;
 
-            // Check if holiday name/date is being updated and if it already exists
             if (!string.IsNullOrEmpty(dto.HolidayName) && dto.HolidayDate.HasValue)
             {
                 if (dto.HolidayName != holiday.HolidayName || dto.HolidayDate.Value.Date != holiday.HolidayDate.Date)
@@ -112,7 +110,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                 }
             }
 
-            // Update only provided fields
             if (!string.IsNullOrEmpty(dto.HolidayName))
                 holiday.HolidayName = dto.HolidayName;
 
@@ -179,7 +176,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 HolidayTypeName = holiday.HolidayType.ToString(),
                 IsOptional = holiday.IsOptional,
                 ApplicableDepartments = holiday.ApplicableDepartments,
-                DepartmentNames = new List<string>(), // Can be populated if needed
+                DepartmentNames = new List<string>(), 
                 IsUpcoming = holiday.IsUpcoming(),
                 IsToday = holiday.IsToday(),
                 DaysUntilHoliday = holiday.DaysUntilHoliday(),

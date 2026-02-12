@@ -15,7 +15,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<Holiday?> GetByNameAndDateAsync(string holidayName, DateTime holidayDate)
         {
-            // Normalize the date to start of day
             var startOfDay = holidayDate.Date;
             var endOfDay = startOfDay.AddDays(1);
 
@@ -29,7 +28,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<bool> IsHolidayExistsAsync(string holidayName, DateTime holidayDate, string? excludeId = null)
         {
-            // Normalize the date to start of day
             var startOfDay = holidayDate.Date;
             var endOfDay = startOfDay.AddDays(1);
 
@@ -60,7 +58,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            // Search term filter
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Or(
@@ -70,25 +67,21 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(searchFilter);
             }
 
-            // Holiday type filter
             if (filter.HolidayType.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.HolidayType, filter.HolidayType.Value));
             }
 
-            // Is optional filter
             if (filter.IsOptional.HasValue)
             {
                 filters.Add(filterBuilder.Eq(x => x.IsOptional, filter.IsOptional.Value));
             }
 
-            // Department filter
             if (!string.IsNullOrWhiteSpace(filter.DepartmentId))
             {
                 filters.Add(filterBuilder.AnyEq(x => x.ApplicableDepartments, filter.DepartmentId));
             }
 
-            // Date range filter
             if (filter.DateFrom.HasValue)
             {
                 filters.Add(filterBuilder.Gte(x => x.HolidayDate, filter.DateFrom.Value));
@@ -99,13 +92,11 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.HolidayDate, filter.DateTo.Value));
             }
 
-            // Upcoming holidays filter
             if (filter.IsUpcoming.HasValue && filter.IsUpcoming.Value)
             {
                 filters.Add(filterBuilder.Gte(x => x.HolidayDate, DateTime.UtcNow.Date));
             }
 
-            // Year filter
             if (filter.Year.HasValue)
             {
                 var yearStart = new DateTime(filter.Year.Value, 1, 1);
@@ -114,7 +105,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Lte(x => x.HolidayDate, yearEnd));
             }
 
-            // Month filter
             if (filter.Month.HasValue && filter.Year.HasValue)
             {
                 var monthStart = new DateTime(filter.Year.Value, filter.Month.Value, 1);
@@ -125,10 +115,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
             var combinedFilter = filterBuilder.And(filters);
 
-            // Get total count
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            // Sorting
             var sortBuilder = Builders<Holiday>.Sort;
             SortDefinition<Holiday> sort = filter.SortBy.ToLower() switch
             {
@@ -138,7 +126,6 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 _ => filter.SortDescending ? sortBuilder.Descending(x => x.HolidayDate) : sortBuilder.Ascending(x => x.HolidayDate)
             };
 
-            // Get paginated items
             var items = await _collection
                 .Find(combinedFilter)
                 .Sort(sort)

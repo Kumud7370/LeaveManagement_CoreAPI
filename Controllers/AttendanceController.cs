@@ -19,9 +19,6 @@ namespace AttendanceManagementSystem.Controllers
             _attendanceService = attendanceService;
         }
 
-        /// <summary>
-        /// Check in for attendance
-        /// </summary>
         [HttpPost("checkin")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> CheckIn([FromBody] CheckInDto dto)
         {
@@ -37,9 +34,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result, "Check-in successful"));
         }
 
-        /// <summary>
-        /// Check out from attendance
-        /// </summary>
         [HttpPost("checkout")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> CheckOut([FromBody] CheckOutDto dto)
         {
@@ -55,9 +49,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result, "Check-out successful"));
         }
 
-        /// <summary>
-        /// Mark manual attendance (Admin only)
-        /// </summary>
         [HttpPost("manual")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> MarkManualAttendance([FromBody] ManualAttendanceDto dto)
@@ -74,9 +65,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result, "Attendance marked successfully"));
         }
 
-        /// <summary>
-        /// Get attendance by ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> GetAttendanceById(string id)
         {
@@ -88,9 +76,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get today's attendance for an employee
-        /// </summary>
         [HttpGet("today/{employeeId}")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> GetTodayAttendance(string employeeId)
         {
@@ -102,9 +87,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get attendance for specific date
-        /// </summary>
         [HttpGet("date/{employeeId}/{date}")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> GetAttendanceByDate(
             string employeeId,
@@ -118,9 +100,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get filtered attendance with pagination
-        /// </summary>
         [HttpPost("filter")]
         public async Task<ActionResult<ApiResponseDto<PagedResultDto<AttendanceResponseDto>>>> GetFilteredAttendance(
             [FromBody] AttendanceFilterDto filter)
@@ -129,9 +108,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<PagedResultDto<AttendanceResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get employee attendance history
-        /// </summary>
         [HttpGet("history/{employeeId}")]
         public async Task<ActionResult<ApiResponseDto<List<AttendanceResponseDto>>>> GetEmployeeAttendanceHistory(
             string employeeId,
@@ -142,9 +118,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<AttendanceResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get attendance summary for an employee
-        /// </summary>
         [HttpGet("summary/{employeeId}")]
         public async Task<ActionResult<ApiResponseDto<AttendanceSummaryDto>>> GetAttendanceSummary(
             string employeeId,
@@ -155,9 +128,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceSummaryDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get attendance statistics
-        /// </summary>
         [HttpGet("statistics")]
         public async Task<ActionResult<ApiResponseDto<Dictionary<string, int>>>> GetAttendanceStatistics(
             [FromQuery] DateTime startDate,
@@ -167,9 +137,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<Dictionary<string, int>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get late check-ins
-        /// </summary>
         [HttpGet("late")]
         public async Task<ActionResult<ApiResponseDto<List<AttendanceResponseDto>>>> GetLateCheckIns(
             [FromQuery] DateTime startDate,
@@ -179,9 +146,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<AttendanceResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get early leaves
-        /// </summary>
         [HttpGet("early-leave")]
         public async Task<ActionResult<ApiResponseDto<List<AttendanceResponseDto>>>> GetEarlyLeaves(
             [FromQuery] DateTime startDate,
@@ -191,9 +155,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<AttendanceResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Update attendance (Admin only)
-        /// </summary>
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> UpdateAttendance(
@@ -212,9 +173,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result, "Attendance updated successfully"));
         }
 
-        /// <summary>
-        /// Delete attendance (Admin only)
-        /// </summary>
         [HttpDelete("{id}")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponseDto<bool>>> DeleteAttendance(string id)
@@ -231,9 +189,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Attendance deleted successfully"));
         }
 
-        /// <summary>
-        /// Approve attendance (Admin/Manager only)
-        /// </summary>
         [HttpPatch("{id}/approve")]
         [Authorize(Roles = "Admin,Manager")]
         public async Task<ActionResult<ApiResponseDto<bool>>> ApproveAttendance(string id)
@@ -250,9 +205,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Attendance approved successfully"));
         }
 
-        /// <summary>
-        /// Mark absent employees (Admin only - usually triggered by background job)
-        /// </summary>
         [HttpPost("mark-absent")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ApiResponseDto<bool>>> MarkAbsentEmployees([FromQuery] DateTime? date = null)

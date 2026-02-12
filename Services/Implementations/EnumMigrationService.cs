@@ -24,7 +24,6 @@ namespace AttendanceManagementSystem.Data.Migrations
 
                 var employeeCollection = _context.GetCollection<BsonDocument>("employees");
 
-                // Check if migration is needed
                 var filter = Builders<BsonDocument>.Filter.Or(
                     Builders<BsonDocument>.Filter.Type("Gender", BsonType.Int32),
                     Builders<BsonDocument>.Filter.Type("EmploymentType", BsonType.Int32),
@@ -41,7 +40,6 @@ namespace AttendanceManagementSystem.Data.Migrations
 
                 _logger.LogInformation($"📊 Found {employeesNeedingMigration} employee(s) with integer enums");
 
-                // Get all employees that need migration
                 var allEmployees = await employeeCollection.Find(filter).ToListAsync();
                 int updatedCount = 0;
 
@@ -49,7 +47,6 @@ namespace AttendanceManagementSystem.Data.Migrations
                 {
                     var updateDefinitions = new List<UpdateDefinition<BsonDocument>>();
 
-                    // Migrate Gender
                     if (employee.Contains("Gender") && employee["Gender"].IsInt32)
                     {
                         var genderValue = (Gender)employee["Gender"].AsInt32;
@@ -57,7 +54,6 @@ namespace AttendanceManagementSystem.Data.Migrations
                         _logger.LogDebug($"  Converting Gender: {employee["Gender"].AsInt32} → {genderValue}");
                     }
 
-                    // Migrate EmploymentType
                     if (employee.Contains("EmploymentType") && employee["EmploymentType"].IsInt32)
                     {
                         var employmentTypeValue = (EmploymentType)employee["EmploymentType"].AsInt32;
@@ -65,7 +61,6 @@ namespace AttendanceManagementSystem.Data.Migrations
                         _logger.LogDebug($"  Converting EmploymentType: {employee["EmploymentType"].AsInt32} → {employmentTypeValue}");
                     }
 
-                    // Migrate EmployeeStatus
                     if (employee.Contains("EmployeeStatus") && employee["EmployeeStatus"].IsInt32)
                     {
                         var employeeStatusValue = (EmployeeStatus)employee["EmployeeStatus"].AsInt32;
@@ -73,7 +68,6 @@ namespace AttendanceManagementSystem.Data.Migrations
                         _logger.LogDebug($"  Converting EmployeeStatus: {employee["EmployeeStatus"].AsInt32} → {employeeStatusValue}");
                     }
 
-                    // Apply updates
                     if (updateDefinitions.Count > 0)
                     {
                         var employeeFilter = Builders<BsonDocument>.Filter.Eq("_id", employee["_id"]);
@@ -94,7 +88,6 @@ namespace AttendanceManagementSystem.Data.Migrations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Enum migration failed: {Message}", ex.Message);
-                // Don't throw - allow app to continue even if migration fails
             }
         }
     }

@@ -26,12 +26,10 @@ namespace AttendanceManagementSystem.Common.Configuration
 
                 try
                 {
-                    // IMPORTANT: Unregister any existing serializers first
                     UnregisterIfExists<Gender>();
                     UnregisterIfExists<EmploymentType>();
                     UnregisterIfExists<EmployeeStatus>();
 
-                    // Now register our string serializers
                     RegisterEnumSerializer<Gender>();
                     RegisterEnumSerializer<EmploymentType>();
                     RegisterEnumSerializer<EmployeeStatus>();
@@ -59,14 +57,12 @@ namespace AttendanceManagementSystem.Common.Configuration
         {
             try
             {
-                // Check if a serializer is already registered
                 var existingSerializer = BsonSerializer.SerializerRegistry.GetSerializer<TEnum>();
 
                 if (existingSerializer != null)
                 {
                     Console.WriteLine($"  ⚠️  {typeof(TEnum).Name} serializer already exists");
 
-                    // Check what type it is
                     if (existingSerializer is EnumSerializer<TEnum> enumSer)
                     {
                         Console.WriteLine($"      Existing representation: {enumSer.Representation}");
@@ -75,7 +71,7 @@ namespace AttendanceManagementSystem.Common.Configuration
             }
             catch
             {
-                // No serializer registered yet - this is fine
+              
                 Console.WriteLine($"  ℹ️  {typeof(TEnum).Name} - no existing serializer");
             }
         }
@@ -87,7 +83,6 @@ namespace AttendanceManagementSystem.Common.Configuration
                 var serializer = new EnumSerializer<TEnum>(BsonType.String);
                 BsonSerializer.RegisterSerializer(serializer);
 
-                // Verify it was registered correctly
                 var registered = BsonSerializer.SerializerRegistry.GetSerializer<TEnum>();
                 if (registered is EnumSerializer<TEnum> regEnum)
                 {
@@ -107,7 +102,6 @@ namespace AttendanceManagementSystem.Common.Configuration
             {
                 Console.WriteLine($"  ⚠️  {typeof(TEnum).Name} → Already registered (attempting to override)");
 
-                // Try to get the existing one and check its configuration
                 try
                 {
                     var existing = BsonSerializer.SerializerRegistry.GetSerializer<TEnum>();

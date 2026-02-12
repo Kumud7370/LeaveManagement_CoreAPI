@@ -19,9 +19,6 @@ namespace AttendanceManagementSystem.Controllers
             _shiftService = shiftService;
         }
 
-        /// <summary>
-        /// Create a new shift
-        /// </summary>
         [HttpPost]
         public async Task<ActionResult<ApiResponseDto<ShiftResponseDto>>> CreateShift([FromBody] CreateShiftDto dto)
         {
@@ -37,9 +34,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<ShiftResponseDto>.SuccessResponse(result, "Shift created successfully"));
         }
 
-        /// <summary>
-        /// Get shift by ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponseDto<ShiftResponseDto>>> GetShiftById(string id)
         {
@@ -51,9 +45,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<ShiftResponseDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get shift by code
-        /// </summary>
         [HttpGet("code/{code}")]
         public async Task<ActionResult<ApiResponseDto<ShiftResponseDto>>> GetShiftByCode(string code)
         {
@@ -65,9 +56,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<ShiftResponseDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get filtered shifts with pagination
-        /// </summary>
         [HttpPost("filter")]
         public async Task<ActionResult<ApiResponseDto<PagedResultDto<ShiftResponseDto>>>> GetFilteredShifts([FromBody] ShiftFilterDto filter)
         {
@@ -75,9 +63,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<PagedResultDto<ShiftResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get all active shifts
-        /// </summary>
         [HttpGet("active")]
         public async Task<ActionResult<ApiResponseDto<List<ShiftResponseDto>>>> GetActiveShifts()
         {
@@ -85,9 +70,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<ShiftResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get all night shifts
-        /// </summary>
         [HttpGet("night-shifts")]
         public async Task<ActionResult<ApiResponseDto<List<ShiftResponseDto>>>> GetNightShifts()
         {
@@ -95,9 +77,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<ShiftResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Update an existing shift
-        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<ApiResponseDto<ShiftResponseDto>>> UpdateShift(string id, [FromBody] UpdateShiftDto dto)
         {
@@ -113,9 +92,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<ShiftResponseDto>.SuccessResponse(result, "Shift updated successfully"));
         }
 
-        /// <summary>
-        /// Delete a shift
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<ActionResult<ApiResponseDto<bool>>> DeleteShift(string id)
         {
@@ -131,9 +107,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Shift deleted successfully"));
         }
 
-        /// <summary>
-        /// Toggle shift active status
-        /// </summary>
         [HttpPatch("{id}/toggle-status")]
         public async Task<ActionResult<ApiResponseDto<bool>>> ToggleShiftStatus(string id, [FromBody] ToggleShiftStatusRequestDto request)
         {
@@ -150,7 +123,6 @@ namespace AttendanceManagementSystem.Controllers
         }
     }
 
-    // Helper DTO for request body
     public class ToggleShiftStatusRequestDto
     {
         public bool IsActive { get; set; }

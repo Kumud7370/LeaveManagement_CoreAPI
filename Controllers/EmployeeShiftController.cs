@@ -19,9 +19,6 @@ namespace AttendanceManagementSystem.Controllers
             _employeeShiftService = employeeShiftService;
         }
 
-        /// <summary>
-        /// Assign shift to employee (create shift change request)
-        /// </summary>
         [HttpPost]
         public async Task<ActionResult<ApiResponseDto<EmployeeShiftResponseDto>>> CreateEmployeeShift([FromBody] CreateEmployeeShiftDto dto)
         {
@@ -37,9 +34,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<EmployeeShiftResponseDto>.SuccessResponse(result, "Shift assignment created successfully"));
         }
 
-        /// <summary>
-        /// Get employee shift by ID
-        /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponseDto<EmployeeShiftResponseDto>>> GetEmployeeShiftById(string id)
         {
@@ -51,9 +45,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<EmployeeShiftResponseDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get filtered employee shifts with pagination
-        /// </summary>
         [HttpPost("filter")]
         public async Task<ActionResult<ApiResponseDto<PagedResultDto<EmployeeShiftResponseDto>>>> GetFilteredEmployeeShifts([FromBody] EmployeeShiftFilterDto filter)
         {
@@ -61,9 +52,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<PagedResultDto<EmployeeShiftResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get all shift assignments for an employee
-        /// </summary>
         [HttpGet("employee/{employeeId}")]
         public async Task<ActionResult<ApiResponseDto<List<EmployeeShiftResponseDto>>>> GetEmployeeShiftsByEmployee(string employeeId)
         {
@@ -71,9 +59,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<EmployeeShiftResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get current active shift for an employee
-        /// </summary>
         [HttpGet("employee/{employeeId}/current")]
         public async Task<ActionResult<ApiResponseDto<EmployeeShiftResponseDto>>> GetCurrentShiftForEmployee(string employeeId)
         {
@@ -85,9 +70,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<EmployeeShiftResponseDto>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get all pending shift change requests
-        /// </summary>
         [HttpGet("pending")]
         public async Task<ActionResult<ApiResponseDto<List<EmployeeShiftResponseDto>>>> GetPendingShiftChanges()
         {
@@ -95,9 +77,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<EmployeeShiftResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Get upcoming shift changes (default 7 days)
-        /// </summary>
         [HttpGet("upcoming")]
         public async Task<ActionResult<ApiResponseDto<List<EmployeeShiftResponseDto>>>> GetUpcomingShiftChanges([FromQuery] int days = 7)
         {
@@ -105,9 +84,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<EmployeeShiftResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Update employee shift assignment
-        /// </summary>
         [HttpPut("{id}")]
         public async Task<ActionResult<ApiResponseDto<EmployeeShiftResponseDto>>> UpdateEmployeeShift(string id, [FromBody] UpdateEmployeeShiftDto dto)
         {
@@ -123,9 +99,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<EmployeeShiftResponseDto>.SuccessResponse(result, "Shift assignment updated successfully"));
         }
 
-        /// <summary>
-        /// Delete employee shift assignment
-        /// </summary>
         [HttpDelete("{id}")]
         public async Task<ActionResult<ApiResponseDto<bool>>> DeleteEmployeeShift(string id)
         {
@@ -141,9 +114,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Shift assignment deleted successfully"));
         }
 
-        /// <summary>
-        /// Approve shift change request
-        /// </summary>
         [HttpPatch("{id}/approve")]
         public async Task<ActionResult<ApiResponseDto<bool>>> ApproveShiftChange(string id)
         {
@@ -159,9 +129,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Shift change approved successfully"));
         }
 
-        /// <summary>
-        /// Reject shift change request
-        /// </summary>
         [HttpPatch("{id}/reject")]
         public async Task<ActionResult<ApiResponseDto<bool>>> RejectShiftChange(string id, [FromBody] RejectShiftChangeRequestDto request)
         {
@@ -177,9 +144,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Shift change rejected successfully"));
         }
 
-        /// <summary>
-        /// Cancel shift change request
-        /// </summary>
         [HttpPatch("{id}/cancel")]
         public async Task<ActionResult<ApiResponseDto<bool>>> CancelShiftChange(string id)
         {
@@ -195,9 +159,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Shift change cancelled successfully"));
         }
 
-        /// <summary>
-        /// Get shift change statistics by status
-        /// </summary>
         [HttpGet("statistics/status")]
         public async Task<ActionResult<ApiResponseDto<Dictionary<string, int>>>> GetShiftChangeStatisticsByStatus()
         {
@@ -205,9 +166,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<Dictionary<string, int>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Validate shift assignment (check for overlaps)
-        /// </summary>
         [HttpPost("validate")]
         public async Task<ActionResult<ApiResponseDto<bool>>> ValidateShiftAssignment([FromBody] ValidateShiftAssignmentRequestDto request)
         {
@@ -222,7 +180,6 @@ namespace AttendanceManagementSystem.Controllers
         }
     }
 
-    // Helper DTOs for request bodies
     public class RejectShiftChangeRequestDto
     {
         public string RejectionReason { get; set; } = string.Empty;

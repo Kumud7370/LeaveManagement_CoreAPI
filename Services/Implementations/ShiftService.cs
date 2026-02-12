@@ -17,11 +17,9 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<ShiftResponseDto?> CreateShiftAsync(CreateShiftDto dto, string createdBy)
         {
-            // Check if code already exists
             if (await _shiftRepository.IsCodeExistsAsync(dto.ShiftCode))
                 return null;
 
-            // Get next display order if not provided
             if (dto.DisplayOrder == 0)
             {
                 var maxOrder = await _shiftRepository.GetMaxDisplayOrderAsync();
@@ -94,14 +92,12 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (shift == null)
                 return null;
 
-            // Check if code is being updated and if it already exists
             if (!string.IsNullOrEmpty(dto.ShiftCode) && dto.ShiftCode != shift.ShiftCode)
             {
                 if (await _shiftRepository.IsCodeExistsAsync(dto.ShiftCode, id))
                     return null;
             }
 
-            // Update only provided fields
             if (!string.IsNullOrEmpty(dto.ShiftName))
                 shift.ShiftName = dto.ShiftName;
 
