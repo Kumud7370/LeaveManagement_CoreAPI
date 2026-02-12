@@ -20,14 +20,15 @@ namespace AttendanceManagementSystem.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<ActionResult<ApiResponseDto<LoginResponseDto>>> Login([FromBody] LoginRequestDto request)
+        public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto request)
         {
             var result = await _authService.LoginAsync(request);
 
             if (result == null)
-                return Unauthorized(ApiResponseDto<LoginResponseDto>.ErrorResponse("Invalid username or password"));
+                return Unauthorized(new { message = "Invalid username or password" });
 
-            return Ok(ApiResponseDto<LoginResponseDto>.SuccessResponse(result, "Login successful"));
+            // Return the data directly instead of wrapped
+            return Ok(result);
         }
 
         [HttpPost("refresh-token")]
