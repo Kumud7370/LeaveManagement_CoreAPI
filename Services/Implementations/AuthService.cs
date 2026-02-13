@@ -1,129 +1,4 @@
-﻿//using AttendanceManagementSystem.Common.Helpers;
-//using AttendanceManagementSystem.Models.DTOs.Auth;
-//using AttendanceManagementSystem.Repositories.Interfaces;
-//using AttendanceManagementSystem.Services.Interfaces;
-
-//namespace AttendanceManagementSystem.Services.Implementations
-//{
-//    public class AuthService : IAuthService
-//    {
-//        private readonly IUserRepository _userRepository;
-//        private readonly IRoleRepository _roleRepository;
-//        private readonly JwtHelper _jwtHelper;
-
-//        public AuthService(IUserRepository userRepository, IRoleRepository roleRepository, JwtHelper jwtHelper)
-//        {
-//            _userRepository = userRepository;
-//            _roleRepository = roleRepository;
-//            _jwtHelper = jwtHelper;
-//        }
-
-//        public async Task<LoginResponseDto?> LoginAsync(LoginRequestDto request)
-//        {
-//            var user = await _userRepository.GetByUsernameAsync(request.Username);
-
-//            if (user == null || !user.IsActive)
-//                return null;
-
-//            if (!PasswordHelper.VerifyPassword(request.Password, user.PasswordHash))
-//                return null;
-
-//            var roles = await _roleRepository.GetRolesByIdsAsync(user.RoleIds);
-//            var roleNames = roles.Select(r => r.Name).ToList();
-
-//            var accessToken = _jwtHelper.GenerateAccessToken(user, roleNames);
-//            var refreshToken = _jwtHelper.GenerateRefreshToken();
-
-//            await _userRepository.UpdateRefreshTokenAsync(
-//                user.Id,
-//                refreshToken,
-//                DateTime.UtcNow.AddDays(_jwtHelper.GetRefreshTokenExpirationDays())
-//            );
-
-//            return new LoginResponseDto
-//            {
-//                AccessToken = accessToken,
-//                RefreshToken = refreshToken,
-//                ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtHelper.GetAccessTokenExpirationMinutes()),
-//                User = new UserInfoDto
-//                {
-//                    Id = user.Id,
-//                    Username = user.Username,
-//                    Email = user.Email,
-//                    FirstName = user.FirstName,
-//                    LastName = user.LastName,
-//                    Roles = roleNames
-//                }
-//            };
-//        }
-
-//        public async Task<LoginResponseDto?> RefreshTokenAsync(RefreshTokenRequestDto request)
-//        {
-//            var user = await _userRepository.GetByRefreshTokenAsync(request.RefreshToken);
-
-//            if (user == null || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
-//                return null;
-
-//            var roles = await _roleRepository.GetRolesByIdsAsync(user.RoleIds);
-//            var roleNames = roles.Select(r => r.Name).ToList();
-
-//            var accessToken = _jwtHelper.GenerateAccessToken(user, roleNames);
-//            var refreshToken = _jwtHelper.GenerateRefreshToken();
-
-//            await _userRepository.UpdateRefreshTokenAsync(
-//                user.Id,
-//                refreshToken,
-//                DateTime.UtcNow.AddDays(_jwtHelper.GetRefreshTokenExpirationDays())
-//            );
-
-//            return new LoginResponseDto
-//            {
-//                AccessToken = accessToken,
-//                RefreshToken = refreshToken,
-//                ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtHelper.GetAccessTokenExpirationMinutes()),
-//                User = new UserInfoDto
-//                {
-//                    Id = user.Id,
-//                    Username = user.Username,
-//                    Email = user.Email,
-//                    FirstName = user.FirstName,
-//                    LastName = user.LastName,
-//                    Roles = roleNames
-//                }
-//            };
-//        }
-
-//        public async Task<bool> ChangePasswordAsync(string userId, ChangePasswordRequestDto request)
-//        {
-//            var user = await _userRepository.GetByIdAsync(userId);
-
-//            if (user == null)
-//                return false;
-
-//            if (!PasswordHelper.VerifyPassword(request.CurrentPassword, user.PasswordHash))
-//                return false;
-
-//            if (request.NewPassword != request.ConfirmPassword)
-//                return false;
-
-//            user.PasswordHash = PasswordHelper.HashPassword(request.NewPassword);
-//            return await _userRepository.UpdateAsync(userId, user);
-//        }
-
-//        public async Task<bool> LogoutAsync(string userId)
-//        {
-//            var user = await _userRepository.GetByIdAsync(userId);
-
-//            if (user == null)
-//                return false;
-
-//            await _userRepository.UpdateRefreshTokenAsync(userId, string.Empty, DateTime.UtcNow);
-//            return true;
-//        }
-//    }
-//}
-
-using AttendanceManagementSystem.Common.Helpers;
+﻿using AttendanceManagementSystem.Common.Helpers;
 using AttendanceManagementSystem.Models.DTOs.Auth;
 using AttendanceManagementSystem.Models.Entities;
 using AttendanceManagementSystem.Repositories.Interfaces;
@@ -138,7 +13,6 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly IEmailService _emailService;
         private readonly JwtHelper _jwtHelper;
 
-        // In-memory OTP storage (use Redis in production)
         private static readonly Dictionary<string, (string Otp, DateTime ExpiryTime)> _otpStore = new();
 
         public AuthService(
@@ -343,21 +217,17 @@ namespace AttendanceManagementSystem.Services.Implementations
             };
         }
 
-        // Forgot Password - Request OTP
         public async Task<bool> RequestPasswordResetOtpAsync(string email)
         {
             var user = await _userRepository.GetByEmailAsync(email);
             if (user == null)
-                return false; // Don't reveal if email exists
+                return false; 
 
-            // Generate 6-digit OTP
             var otp = new Random().Next(100000, 999999).ToString();
-            var expiryTime = DateTime.UtcNow.AddMinutes(3); // 3 minutes expiry
+            var expiryTime = DateTime.UtcNow.AddMinutes(3); 
 
-            // Store OTP (use Redis in production)
             _otpStore[email.ToLower()] = (otp, expiryTime);
 
-            // Send OTP via email
             var subject = "Password Reset OTP";
             var body = $@"
 <!DOCTYPE html>
@@ -419,7 +289,6 @@ namespace AttendanceManagementSystem.Services.Implementations
         // Forgot Password - Reset Password
         public async Task<bool> ResetPasswordAsync(string email, string otp, string newPassword)
         {
-            // Verify OTP first
             if (!await VerifyPasswordResetOtpAsync(email, otp))
                 return false;
 
@@ -427,28 +296,22 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (user == null)
                 return false;
 
-            // 🔍 ADD THIS LOGGING
             Console.WriteLine($"[RESET] Email: {email}");
             Console.WriteLine($"[RESET] New Password: {newPassword}");
             Console.WriteLine($"[RESET] Old Hash: {user.PasswordHash}");
 
-            // Update password
             user.PasswordHash = PasswordHelper.HashPassword(newPassword);
 
-            // 🔍 ADD THIS LOGGING
             Console.WriteLine($"[RESET] New Hash: {user.PasswordHash}");
 
             var result = await _userRepository.UpdateAsync(user.Id, user);
 
-            // 🔍 ADD THIS LOGGING
             Console.WriteLine($"[RESET] Update Result: {result}");
 
             if (result)
             {
-                // Remove OTP from store
                 _otpStore.Remove(email.ToLower());
 
-                // Clear refresh token for security
                 await _userRepository.UpdateRefreshTokenAsync(user.Id, string.Empty, DateTime.UtcNow);
             }
 
