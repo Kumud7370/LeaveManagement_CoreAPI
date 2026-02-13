@@ -1,12 +1,31 @@
-﻿using AttendanceManagementSystem.Models.Entities;
+﻿//using AttendanceManagementSystem.Models.Entities;
+
+//namespace AttendanceManagementSystem.Repositories.Interfaces
+//{
+//    public interface IUserRepository : IBaseRepository<User>
+//    {
+//        Task<User?> GetByUsernameAsync(string username);
+//        Task<User?> GetByEmailAsync(string email);
+//        Task<bool> UpdateRefreshTokenAsync(string userId, string refreshToken, DateTime expiryTime);
+//        Task<User?> GetByRefreshTokenAsync(string refreshToken);
+//    }
+//}
+
+
+using AttendanceManagementSystem.Models.Entities;
 
 namespace AttendanceManagementSystem.Repositories.Interfaces
 {
-    public interface IUserRepository : IBaseRepository<User>
+    public interface IUserRepository
     {
+        Task<User?> GetByIdAsync(string id);
         Task<User?> GetByUsernameAsync(string username);
         Task<User?> GetByEmailAsync(string email);
-        Task<bool> UpdateRefreshTokenAsync(string userId, string refreshToken, DateTime expiryTime);
         Task<User?> GetByRefreshTokenAsync(string refreshToken);
+        Task<User> CreateAsync(User user);
+        Task<bool> UpdateAsync(string id, User user);
+        Task<bool> DeleteAsync(string id);
+        Task<bool> UpdateRefreshTokenAsync(string userId, string refreshToken, DateTime expiryTime);
+        Task<List<User>> GetAllAsync();
     }
 }
