@@ -6,6 +6,8 @@ namespace AttendanceManagementSystem.Models.Entities
     {
         [BsonElement("username")]
         public string Username { get; set; } = string.Empty;
+        [BsonElement("employeeId")]
+        public string? EmployeeId { get; set; }
 
         [BsonElement("email")]
         public string Email { get; set; } = string.Empty;
@@ -30,5 +32,7 @@ namespace AttendanceManagementSystem.Models.Entities
 
         [BsonElement("refreshTokenExpiryTime")]
         public DateTime? RefreshTokenExpiryTime { get; set; }
+
+        
     }
 }
