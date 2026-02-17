@@ -12,6 +12,7 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly IRoleRepository _roleRepository;
         private readonly IEmailService _emailService;
         private readonly JwtHelper _jwtHelper;
+        private readonly IEmployeeRepository _employeeRepository;
 
         private static readonly Dictionary<string, (string Otp, DateTime ExpiryTime)> _otpStore = new();
 
@@ -19,12 +20,14 @@ namespace AttendanceManagementSystem.Services.Implementations
             IUserRepository userRepository,
             IRoleRepository roleRepository,
             IEmailService emailService,
-            JwtHelper jwtHelper)
+            JwtHelper jwtHelper,
+            IEmployeeRepository employeeRepository)  
         {
             _userRepository = userRepository;
             _roleRepository = roleRepository;
             _emailService = emailService;
             _jwtHelper = jwtHelper;
+            _employeeRepository = employeeRepository; 
         }
 
         public async Task<LoginResponseDto?> LoginAsync(LoginRequestDto request)
@@ -45,7 +48,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                 return null;
             var isPasswordValid = PasswordHelper.VerifyPassword(request.Password, user.PasswordHash);
 
-            // 🔍 ADD THIS LOGGING
             Console.WriteLine($"[LOGIN] Password Valid: {isPasswordValid}");
 
             if (!isPasswordValid)
@@ -147,10 +149,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             return true;
         }
 
-        // Registration
         public async Task<LoginResponseDto?> RegisterAsync(RegisterRequestDto request)
         {
-            // Check if user already exists
             var existingUser = await _userRepository.GetByUsernameAsync(request.Username);
             if (existingUser != null)
                 throw new Exception("Username already exists");
@@ -159,12 +159,17 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (existingEmail != null)
                 throw new Exception("Email already exists");
 
+            var employee = await _employeeRepository.GetByEmailAsync(request.Email);
+            if (employee == null)
+            {
+                throw new Exception("No employee record found with this email. Please contact HR to create your employee profile first.");
+            }
+
             // Get default Employee role
             var employeeRole = await _roleRepository.GetByNameAsync("Employee");
             if (employeeRole == null)
                 throw new Exception("Default Employee role not found");
 
-            // Create new user
             var newUser = new User
             {
                 FirstName = request.FirstName,
@@ -174,6 +179,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 PasswordHash = PasswordHelper.HashPassword(request.Password),
                 RoleIds = new List<string> { employeeRole.Id },
                 IsActive = true,
+                EmployeeId = employee.Id,  
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -182,14 +188,16 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (createdUser == null)
                 return null;
 
-            // Send welcome email
+            employee.UserId = createdUser.Id;
+            await _employeeRepository.UpdateAsync(employee.Id, employee);
+
             await _emailService.SendWelcomeEmailAsync(
                 createdUser.Email,
                 $"{createdUser.FirstName} {createdUser.LastName}",
                 "Employee"
             );
 
-            // Generate tokens
+
             var roleNames = new List<string> { employeeRole.Name };
             var accessToken = _jwtHelper.GenerateAccessToken(createdUser, roleNames);
             var refreshToken = _jwtHelper.GenerateRefreshToken();
@@ -221,10 +229,10 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var user = await _userRepository.GetByEmailAsync(email);
             if (user == null)
-                return false; 
+                return false;
 
             var otp = new Random().Next(100000, 999999).ToString();
-            var expiryTime = DateTime.UtcNow.AddMinutes(3); 
+            var expiryTime = DateTime.UtcNow.AddMinutes(3);
 
             _otpStore[email.ToLower()] = (otp, expiryTime);
 
@@ -269,7 +277,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             return true;
         }
 
-        // Forgot Password - Verify OTP
         public async Task<bool> VerifyPasswordResetOtpAsync(string email, string otp)
         {
             var normalizedEmail = email.ToLower();
@@ -286,7 +293,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             return otpData.Otp == otp;
         }
 
-        // Forgot Password - Reset Password
         public async Task<bool> ResetPasswordAsync(string email, string otp, string newPassword)
         {
             if (!await VerifyPasswordResetOtpAsync(email, otp))

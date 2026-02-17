@@ -21,6 +21,9 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("lastName")]
         public string LastName { get; set; } = string.Empty;
 
+        [BsonElement("userId")]
+        public string? UserId { get; set; }
+
         [BsonElement("email")]
         public string Email { get; set; } = string.Empty;
 
