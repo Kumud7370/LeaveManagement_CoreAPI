@@ -17,6 +17,7 @@ namespace AttendanceManagementSystem.Models.Entities
         public string? Description { get; set; }
 
         [BsonRepresentation(BsonType.String)]
+        [BsonElement("holidayType")]
         public HolidayType HolidayType { get; set; }
 
         [BsonElement("isOptional")]
@@ -34,20 +35,10 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("deletedAt")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? DeletedAt { get; set; }
+        public bool IsUpcoming() => HolidayDate.Date >= DateTime.UtcNow.Date;
 
-        public bool IsUpcoming()
-        {
-            return HolidayDate.Date >= DateTime.UtcNow.Date;
-        }
+        public bool IsToday() => HolidayDate.Date == DateTime.UtcNow.Date;
 
-        public bool IsToday()
-        {
-            return HolidayDate.Date == DateTime.UtcNow.Date;
-        }
-
-        public int DaysUntilHoliday()
-        {
-            return (HolidayDate.Date - DateTime.UtcNow.Date).Days;
-        }
+        public int DaysUntilHoliday() => (HolidayDate.Date - DateTime.UtcNow.Date).Days;
     }
 }

@@ -9,6 +9,6 @@ namespace AttendanceManagementSystem.Models.DTOs.Holiday
         public string? Description { get; set; }
         public HolidayType HolidayType { get; set; }
         public bool IsOptional { get; set; }
-        public List<string> ApplicableDepartments { get; set; } = new List<string>();
+        public List<string>? ApplicableDepartments { get; set; }
     }
 }
