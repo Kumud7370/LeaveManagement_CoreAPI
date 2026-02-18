@@ -61,69 +61,67 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Or(
-                    filterBuilder.Regex(x => x.HolidayName, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
-                    filterBuilder.Regex(x => x.Description, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"))
+                    filterBuilder.Regex(x => x.HolidayName,
+                        new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
+                    filterBuilder.Regex(x => x.Description,
+                        new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"))
                 );
                 filters.Add(searchFilter);
             }
 
             if (filter.HolidayType.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.HolidayType, filter.HolidayType.Value));
-            }
 
             if (filter.IsOptional.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.IsOptional, filter.IsOptional.Value));
-            }
 
             if (!string.IsNullOrWhiteSpace(filter.DepartmentId))
-            {
                 filters.Add(filterBuilder.AnyEq(x => x.ApplicableDepartments, filter.DepartmentId));
-            }
-
-            if (filter.DateFrom.HasValue)
-            {
-                filters.Add(filterBuilder.Gte(x => x.HolidayDate, filter.DateFrom.Value));
-            }
-
-            if (filter.DateTo.HasValue)
-            {
-                filters.Add(filterBuilder.Lte(x => x.HolidayDate, filter.DateTo.Value));
-            }
-
-            if (filter.IsUpcoming.HasValue && filter.IsUpcoming.Value)
-            {
-                filters.Add(filterBuilder.Gte(x => x.HolidayDate, DateTime.UtcNow.Date));
-            }
-
-            if (filter.Year.HasValue)
-            {
-                var yearStart = new DateTime(filter.Year.Value, 1, 1);
-                var yearEnd = new DateTime(filter.Year.Value, 12, 31, 23, 59, 59);
-                filters.Add(filterBuilder.Gte(x => x.HolidayDate, yearStart));
-                filters.Add(filterBuilder.Lte(x => x.HolidayDate, yearEnd));
-            }
 
             if (filter.Month.HasValue && filter.Year.HasValue)
             {
-                var monthStart = new DateTime(filter.Year.Value, filter.Month.Value, 1);
-                var monthEnd = monthStart.AddMonths(1).AddDays(-1).AddHours(23).AddMinutes(59).AddSeconds(59);
+                var monthStart = new DateTime(filter.Year.Value, filter.Month.Value, 1, 0, 0, 0, DateTimeKind.Utc);
+                var monthEnd = monthStart.AddMonths(1).AddTicks(-1);
                 filters.Add(filterBuilder.Gte(x => x.HolidayDate, monthStart));
                 filters.Add(filterBuilder.Lte(x => x.HolidayDate, monthEnd));
             }
+            else if (filter.Year.HasValue)
+            {
+                var yearStart = new DateTime(filter.Year.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                var yearEnd = new DateTime(filter.Year.Value, 12, 31, 23, 59, 59, DateTimeKind.Utc);
+                filters.Add(filterBuilder.Gte(x => x.HolidayDate, yearStart));
+                filters.Add(filterBuilder.Lte(x => x.HolidayDate, yearEnd));
+            }
+            else
+            {
+                if (filter.DateFrom.HasValue)
+                    filters.Add(filterBuilder.Gte(x => x.HolidayDate, filter.DateFrom.Value));
+
+                if (filter.DateTo.HasValue)
+                    filters.Add(filterBuilder.Lte(x => x.HolidayDate, filter.DateTo.Value));
+            }
+
+            if (filter.IsUpcoming.HasValue && filter.IsUpcoming.Value)
+                filters.Add(filterBuilder.Gte(x => x.HolidayDate, DateTime.UtcNow.Date));
 
             var combinedFilter = filterBuilder.And(filters);
-
-            var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
+            var totalCount = (int)await _collection.CountDocumentsAsync(combinedFilter);
 
             var sortBuilder = Builders<Holiday>.Sort;
             SortDefinition<Holiday> sort = filter.SortBy.ToLower() switch
             {
-                "holidayname" => filter.SortDescending ? sortBuilder.Descending(x => x.HolidayName) : sortBuilder.Ascending(x => x.HolidayName),
-                "holidaytype" => filter.SortDescending ? sortBuilder.Descending(x => x.HolidayType) : sortBuilder.Ascending(x => x.HolidayType),
-                "createdat" => filter.SortDescending ? sortBuilder.Descending(x => x.CreatedAt) : sortBuilder.Ascending(x => x.CreatedAt),
-                _ => filter.SortDescending ? sortBuilder.Descending(x => x.HolidayDate) : sortBuilder.Ascending(x => x.HolidayDate)
+                "holidayname" => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.HolidayName)
+                    : sortBuilder.Ascending(x => x.HolidayName),
+                "holidaytype" => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.HolidayType)
+                    : sortBuilder.Ascending(x => x.HolidayType),
+                "createdat" => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.CreatedAt)
+                    : sortBuilder.Ascending(x => x.CreatedAt),
+                _ => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.HolidayDate)
+                    : sortBuilder.Ascending(x => x.HolidayDate)
             };
 
             var items = await _collection
@@ -133,7 +131,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 .Limit(filter.PageSize)
                 .ToListAsync();
 
-            return (items, (int)totalCount);
+            return (items, totalCount);
         }
 
         public async Task<List<Holiday>> GetHolidaysByDepartmentAsync(string departmentId)
@@ -164,8 +162,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<List<Holiday>> GetHolidaysByYearAsync(int year)
         {
-            var yearStart = new DateTime(year, 1, 1);
-            var yearEnd = new DateTime(year, 12, 31, 23, 59, 59);
+            var yearStart = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            var yearEnd = new DateTime(year, 12, 31, 23, 59, 59, DateTimeKind.Utc);
             return await _collection
                 .Find(x => x.HolidayDate >= yearStart && x.HolidayDate <= yearEnd && !x.IsDeleted)
                 .SortBy(x => x.HolidayDate)
@@ -174,8 +172,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<List<Holiday>> GetHolidaysByMonthAsync(int year, int month)
         {
-            var monthStart = new DateTime(year, month, 1);
-            var monthEnd = monthStart.AddMonths(1).AddDays(-1).AddHours(23).AddMinutes(59).AddSeconds(59);
+            var monthStart = new DateTime(year, month, 1, 0, 0, 0, DateTimeKind.Utc);
+            var monthEnd = monthStart.AddMonths(1).AddTicks(-1);
             return await _collection
                 .Find(x => x.HolidayDate >= monthStart && x.HolidayDate <= monthEnd && !x.IsDeleted)
                 .SortBy(x => x.HolidayDate)
@@ -204,6 +202,21 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             return await _collection
                 .Find(x => x.HolidayDate >= startOfDay && x.HolidayDate < endOfDay && !x.IsDeleted)
                 .AnyAsync();
+        }
+        public async Task<bool> SoftDeleteAsync(string id, string deletedBy)
+        {
+            var update = Builders<Holiday>.Update
+                .Set(x => x.IsDeleted, true)
+                .Set(x => x.DeletedAt, DateTime.UtcNow)
+                .Set(x => x.UpdatedBy, deletedBy)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(
+                x => x.Id == id && !x.IsDeleted,
+                update
+            );
+
+            return result.ModifiedCount > 0;
         }
     }
 }
