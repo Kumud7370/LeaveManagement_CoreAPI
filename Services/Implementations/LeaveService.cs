@@ -2,6 +2,7 @@
 using AttendanceManagementSystem.Models.DTOs.Leave;
 using AttendanceManagementSystem.Models.Entities;
 using AttendanceManagementSystem.Models.Enums;
+using AttendanceManagementSystem.Repositories.Implementations;
 using AttendanceManagementSystem.Repositories.Interfaces;
 using AttendanceManagementSystem.Services.Interfaces;
 
@@ -13,17 +14,20 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly ILeaveTypeRepository _leaveTypeRepository;
         private readonly IEmployeeRepository _employeeRepository;
         private readonly ILeaveBalanceRepository _leaveBalanceRepository;
+        private readonly IUserRepository _userRepository;
 
         public LeaveService(
             ILeaveRepository leaveRepository,
             ILeaveTypeRepository leaveTypeRepository,
             IEmployeeRepository employeeRepository,
-            ILeaveBalanceRepository leaveBalanceRepository)
+            ILeaveBalanceRepository leaveBalanceRepository,
+            IUserRepository userRepository)
         {
             _leaveRepository = leaveRepository;
             _leaveTypeRepository = leaveTypeRepository;
             _employeeRepository = employeeRepository;
             _leaveBalanceRepository = leaveBalanceRepository;
+            _userRepository = userRepository;
         }
 
         public async Task<LeaveResponseDto?> CreateLeaveAsync(CreateLeaveDto dto, string createdBy)
@@ -310,13 +314,23 @@ namespace AttendanceManagementSystem.Services.Implementations
             var employee = await _employeeRepository.GetByIdAsync(leave.EmployeeId);
             var leaveType = await _leaveTypeRepository.GetByIdAsync(leave.LeaveTypeId);
 
-            Employee? approver = null;
+            string? approvedByName = null;
             if (!string.IsNullOrEmpty(leave.ApprovedBy))
-                approver = await _employeeRepository.GetByIdAsync(leave.ApprovedBy);
+            {
+                var approver = await _userRepository.GetByIdAsync(leave.ApprovedBy);
+                approvedByName = approver != null
+                    ? $"{approver.FirstName} {approver.LastName}".Trim()
+                    : null;
+            }
 
-            Employee? rejector = null;
+            string? rejectedByName = null;
             if (!string.IsNullOrEmpty(leave.RejectedBy))
-                rejector = await _employeeRepository.GetByIdAsync(leave.RejectedBy);
+            {
+                var rejector = await _userRepository.GetByIdAsync(leave.RejectedBy);
+                rejectedByName = rejector != null
+                    ? $"{rejector.FirstName} {rejector.LastName}".Trim()
+                    : null;
+            }
 
             return new LeaveResponseDto
             {
@@ -336,10 +350,10 @@ namespace AttendanceManagementSystem.Services.Implementations
                 LeaveStatusName = leave.LeaveStatus.ToString(),
                 AppliedDate = leave.AppliedDate,
                 ApprovedBy = leave.ApprovedBy,
-                ApprovedByName = approver?.GetFullName(),
+                ApprovedByName = approvedByName,
                 ApprovedDate = leave.ApprovedDate,
                 RejectedBy = leave.RejectedBy,
-                RejectedByName = rejector?.GetFullName(),
+                RejectedByName = rejectedByName,
                 RejectedDate = leave.RejectedDate,
                 RejectionReason = leave.RejectionReason,
                 CancelledDate = leave.CancelledDate,
@@ -352,5 +366,5 @@ namespace AttendanceManagementSystem.Services.Implementations
                 UpdatedAt = leave.UpdatedAt
             };
         }
-    }
+    };
 }
