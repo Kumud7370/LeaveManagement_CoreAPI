@@ -18,13 +18,14 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<HolidayResponseDto?> CreateHolidayAsync(CreateHolidayDto dto, string createdBy)
         {
+
             if (await _holidayRepository.IsHolidayExistsAsync(dto.HolidayName, dto.HolidayDate))
                 return null;
 
             var holiday = new Holiday
             {
                 HolidayName = dto.HolidayName,
-                HolidayDate = dto.HolidayDate,
+                HolidayDate = DateTime.SpecifyKind(dto.HolidayDate.Date, DateTimeKind.Utc),
                 Description = dto.Description,
                 HolidayType = dto.HolidayType,
                 IsOptional = dto.IsOptional,
@@ -32,24 +33,21 @@ namespace AttendanceManagementSystem.Services.Implementations
                 CreatedBy = createdBy
             };
 
-            var createdHoliday = await _holidayRepository.CreateAsync(holiday);
-            return MapToResponseDto(createdHoliday);
+            var created = await _holidayRepository.CreateAsync(holiday);
+            return MapToResponseDto(created);
         }
 
         public async Task<HolidayResponseDto?> GetHolidayByIdAsync(string id)
         {
             var holiday = await _holidayRepository.GetByIdAsync(id);
-            return holiday != null ? MapToResponseDto(holiday) : null;
+            return holiday != null && !holiday.IsDeleted ? MapToResponseDto(holiday) : null;
         }
 
         public async Task<PagedResultDto<HolidayResponseDto>> GetFilteredHolidaysAsync(HolidayFilterDto filter)
         {
             var (items, totalCount) = await _holidayRepository.GetFilteredHolidaysAsync(filter);
-
-            var holidayDtos = items.Select(MapToResponseDto).ToList();
-
             return new PagedResultDto<HolidayResponseDto>(
-                holidayDtos,
+                items.Select(MapToResponseDto).ToList(),
                 totalCount,
                 filter.PageNumber,
                 filter.PageSize
@@ -95,26 +93,28 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<HolidayResponseDto?> UpdateHolidayAsync(string id, UpdateHolidayDto dto, string updatedBy)
         {
             var holiday = await _holidayRepository.GetByIdAsync(id);
-            if (holiday == null)
+            if (holiday == null || holiday.IsDeleted)
                 return null;
 
-            if (!string.IsNullOrEmpty(dto.HolidayName) && dto.HolidayDate.HasValue)
+            var targetName = !string.IsNullOrEmpty(dto.HolidayName) ? dto.HolidayName : holiday.HolidayName;
+            var targetDate = dto.HolidayDate.HasValue
+                ? DateTime.SpecifyKind(dto.HolidayDate.Value.Date, DateTimeKind.Utc)
+                : holiday.HolidayDate;
+
+            bool nameChanged = targetName != holiday.HolidayName;
+            bool dateChanged = targetDate.Date != holiday.HolidayDate.Date;
+
+            if (nameChanged || dateChanged)
             {
-                if (dto.HolidayName != holiday.HolidayName || dto.HolidayDate.Value.Date != holiday.HolidayDate.Date)
-                {
-                    if (await _holidayRepository.IsHolidayExistsAsync(
-                        dto.HolidayName ?? holiday.HolidayName,
-                        dto.HolidayDate ?? holiday.HolidayDate,
-                        id))
-                        return null;
-                }
+                if (await _holidayRepository.IsHolidayExistsAsync(targetName, targetDate, id))
+                    return null;
             }
 
             if (!string.IsNullOrEmpty(dto.HolidayName))
                 holiday.HolidayName = dto.HolidayName;
 
             if (dto.HolidayDate.HasValue)
-                holiday.HolidayDate = dto.HolidayDate.Value;
+                holiday.HolidayDate = DateTime.SpecifyKind(dto.HolidayDate.Value.Date, DateTimeKind.Utc);
 
             if (dto.Description != null)
                 holiday.Description = dto.Description;
@@ -129,6 +129,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 holiday.ApplicableDepartments = dto.ApplicableDepartments;
 
             holiday.UpdatedBy = updatedBy;
+            holiday.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _holidayRepository.UpdateAsync(id, holiday);
             return updated ? MapToResponseDto(holiday) : null;
@@ -137,13 +138,10 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<bool> DeleteHolidayAsync(string id, string deletedBy)
         {
             var holiday = await _holidayRepository.GetByIdAsync(id);
-            if (holiday == null)
+            if (holiday == null || holiday.IsDeleted)
                 return false;
 
-            holiday.UpdatedBy = deletedBy;
-            holiday.DeletedAt = DateTime.UtcNow;
-
-            return await _holidayRepository.DeleteAsync(id);
+            return await _holidayRepository.SoftDeleteAsync(id, deletedBy);
         }
 
         public async Task<bool> IsHolidayOnDateAsync(DateTime date)
@@ -154,35 +152,29 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<Dictionary<string, int>> GetHolidayStatisticsByTypeAsync()
         {
             var statistics = new Dictionary<string, int>();
-
             foreach (HolidayType type in Enum.GetValues(typeof(HolidayType)))
             {
-                var count = await _holidayRepository.GetHolidayCountByTypeAsync(type);
-                statistics[type.ToString()] = count;
+                statistics[type.ToString()] = await _holidayRepository.GetHolidayCountByTypeAsync(type);
             }
-
             return statistics;
         }
 
-        private HolidayResponseDto MapToResponseDto(Holiday holiday)
+        private static HolidayResponseDto MapToResponseDto(Holiday h) => new()
         {
-            return new HolidayResponseDto
-            {
-                Id = holiday.Id,
-                HolidayName = holiday.HolidayName,
-                HolidayDate = holiday.HolidayDate,
-                Description = holiday.Description,
-                HolidayType = holiday.HolidayType,
-                HolidayTypeName = holiday.HolidayType.ToString(),
-                IsOptional = holiday.IsOptional,
-                ApplicableDepartments = holiday.ApplicableDepartments,
-                DepartmentNames = new List<string>(), 
-                IsUpcoming = holiday.IsUpcoming(),
-                IsToday = holiday.IsToday(),
-                DaysUntilHoliday = holiday.DaysUntilHoliday(),
-                CreatedAt = holiday.CreatedAt,
-                UpdatedAt = holiday.UpdatedAt
-            };
-        }
+            Id = h.Id,
+            HolidayName = h.HolidayName,
+            HolidayDate = h.HolidayDate,
+            Description = h.Description,
+            HolidayType = h.HolidayType,
+            HolidayTypeName = h.HolidayType.ToString(),
+            IsOptional = h.IsOptional,
+            ApplicableDepartments = h.ApplicableDepartments,
+            DepartmentNames = new List<string>(),
+            IsUpcoming = h.IsUpcoming(),
+            IsToday = h.IsToday(),
+            DaysUntilHoliday = h.DaysUntilHoliday(),
+            CreatedAt = h.CreatedAt,
+            UpdatedAt = h.UpdatedAt
+        };
     }
 }

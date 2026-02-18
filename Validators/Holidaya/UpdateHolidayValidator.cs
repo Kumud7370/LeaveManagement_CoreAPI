@@ -13,7 +13,7 @@ namespace AttendanceManagementSystem.Validators.Holiday
                 .When(x => !string.IsNullOrEmpty(x.HolidayName));
 
             RuleFor(x => x.HolidayDate)
-                .Must(BeValidDate).WithMessage("Holiday date must be a valid date")
+                .Must(BeValidDate).WithMessage("Holiday date must be between 01/01/2000 and 31/12/2100")
                 .When(x => x.HolidayDate.HasValue);
 
             RuleFor(x => x.Description)
@@ -25,16 +25,13 @@ namespace AttendanceManagementSystem.Validators.Holiday
                 .When(x => x.HolidayType.HasValue);
 
             RuleFor(x => x.ApplicableDepartments)
-                .Must(list => list == null || list.Count > 0).WithMessage("At least one department must be selected")
+                .Must(list => list == null || list.Count > 0)
+                    .WithMessage("At least one department must be selected when providing applicable departments")
                 .When(x => x.ApplicableDepartments != null);
         }
 
-        private bool BeValidDate(DateTime? date)
-        {
-            if (!date.HasValue)
-                return true;
-
-            return date.Value >= new DateTime(2000, 1, 1) && date.Value <= new DateTime(2100, 12, 31);
-        }
+        private static bool BeValidDate(DateTime? date) =>
+            !date.HasValue ||
+            (date.Value >= new DateTime(2000, 1, 1) && date.Value <= new DateTime(2100, 12, 31));
     }
 }

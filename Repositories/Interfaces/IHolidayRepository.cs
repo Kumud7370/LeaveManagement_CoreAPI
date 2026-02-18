@@ -17,5 +17,6 @@ namespace AttendanceManagementSystem.Repositories.Interfaces
         Task<List<Holiday>> GetHolidaysByTypeAsync(HolidayType holidayType);
         Task<int> GetHolidayCountByTypeAsync(HolidayType holidayType);
         Task<bool> IsHolidayOnDateAsync(DateTime date);
+        Task<bool> SoftDeleteAsync(string id, string deletedBy);
     }
 }

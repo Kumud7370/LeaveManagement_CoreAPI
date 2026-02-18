@@ -1,4 +1,5 @@
 ﻿using AttendanceManagementSystem.Models.DTOs.Holiday;
+using AttendanceManagementSystem.Models.Enums;
 using FluentValidation;
 
 namespace AttendanceManagementSystem.Validators.Holiday
@@ -14,7 +15,7 @@ namespace AttendanceManagementSystem.Validators.Holiday
 
             RuleFor(x => x.HolidayDate)
                 .NotEmpty().WithMessage("Holiday date is required")
-                .Must(BeValidDate).WithMessage("Holiday date must be a valid future or current date");
+                .Must(BeValidDate).WithMessage("Holiday date must be between 01/01/2000 and 31/12/2100");
 
             RuleFor(x => x.Description)
                 .MaximumLength(500).WithMessage("Description must not exceed 500 characters")
@@ -25,13 +26,12 @@ namespace AttendanceManagementSystem.Validators.Holiday
 
             RuleFor(x => x.ApplicableDepartments)
                 .NotNull().WithMessage("Applicable departments list is required")
-                .Must(list => list == null || list.Count > 0).WithMessage("At least one department must be selected")
-                .When(x => x.HolidayType == Models.Enums.HolidayType.Regional || x.HolidayType == Models.Enums.HolidayType.Optional);
+                .Must(list => list != null && list.Count > 0)
+                    .WithMessage("At least one department must be selected for Regional or Optional holidays")
+                .When(x => x.HolidayType == HolidayType.Regional || x.HolidayType == HolidayType.Optional);
         }
 
-        private bool BeValidDate(DateTime date)
-        {
-            return date >= new DateTime(2000, 1, 1) && date <= new DateTime(2100, 12, 31);
-        }
+        private static bool BeValidDate(DateTime date) =>
+            date >= new DateTime(2000, 1, 1) && date <= new DateTime(2100, 12, 31);
     }
 }
