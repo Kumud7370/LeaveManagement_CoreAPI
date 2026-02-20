@@ -26,6 +26,9 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("applicableDepartments")]
         public List<string> ApplicableDepartments { get; set; } = new List<string>();
 
+        [BsonElement("isActive")]
+        public bool IsActive { get; set; } = true;
+
         [BsonElement("createdBy")]
         public string CreatedBy { get; set; } = string.Empty;
 

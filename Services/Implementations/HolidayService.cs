@@ -18,7 +18,6 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<HolidayResponseDto?> CreateHolidayAsync(CreateHolidayDto dto, string createdBy)
         {
-
             if (await _holidayRepository.IsHolidayExistsAsync(dto.HolidayName, dto.HolidayDate))
                 return null;
 
@@ -29,6 +28,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Description = dto.Description,
                 HolidayType = dto.HolidayType,
                 IsOptional = dto.IsOptional,
+                IsActive = dto.IsActive,                          
                 ApplicableDepartments = dto.ApplicableDepartments ?? new List<string>(),
                 CreatedBy = createdBy
             };
@@ -128,6 +128,9 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (dto.ApplicableDepartments != null)
                 holiday.ApplicableDepartments = dto.ApplicableDepartments;
 
+            if (dto.IsActive.HasValue)
+                holiday.IsActive = dto.IsActive.Value;
+
             holiday.UpdatedBy = updatedBy;
             holiday.UpdatedAt = DateTime.UtcNow;
 
@@ -168,6 +171,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             HolidayType = h.HolidayType,
             HolidayTypeName = h.HolidayType.ToString(),
             IsOptional = h.IsOptional,
+            IsActive = h.IsActive,                                
             ApplicableDepartments = h.ApplicableDepartments,
             DepartmentNames = new List<string>(),
             IsUpcoming = h.IsUpcoming(),
