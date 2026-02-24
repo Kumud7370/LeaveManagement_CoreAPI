@@ -7,6 +7,7 @@ namespace AttendanceManagementSystem.Repositories.Interfaces
     {
         Task<Employee?> GetByEmployeeCodeAsync(string employeeCode);
         Task<Employee?> GetByEmailAsync(string email);
+        Task<Employee?> GetByUserIdAsync(string userId); // ← ADDED
         Task<bool> IsEmployeeCodeExistsAsync(string employeeCode, string? excludeId = null);
         Task<bool> IsEmailExistsAsync(string email, string? excludeId = null);
         Task<(List<Employee> Items, int TotalCount)> GetFilteredEmployeesAsync(EmployeeFilterDto filter);
