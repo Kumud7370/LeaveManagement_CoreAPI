@@ -15,13 +15,23 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<Employee?> GetByEmployeeCodeAsync(string employeeCode)
         {
-            return await _collection.Find(x => x.EmployeeCode == employeeCode && !x.IsDeleted)
+            return await _collection
+                .Find(x => x.EmployeeCode == employeeCode && !x.IsDeleted)
                 .FirstOrDefaultAsync();
         }
 
         public async Task<Employee?> GetByEmailAsync(string email)
         {
-            return await _collection.Find(x => x.Email == email && !x.IsDeleted)
+            return await _collection
+                .Find(x => x.Email == email && !x.IsDeleted)
+                .FirstOrDefaultAsync();
+        }
+
+        // ← ADDED: Looks up an employee by their linked auth UserId
+        public async Task<Employee?> GetByUserIdAsync(string userId)
+        {
+            return await _collection
+                .Find(x => x.UserId == userId && !x.IsDeleted)
                 .FirstOrDefaultAsync();
         }
 
@@ -81,44 +91,28 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             }
 
             if (!string.IsNullOrWhiteSpace(filter.DepartmentId))
-            {
                 filters.Add(filterBuilder.Eq(x => x.DepartmentId, filter.DepartmentId));
-            }
 
             if (!string.IsNullOrWhiteSpace(filter.DesignationId))
-            {
                 filters.Add(filterBuilder.Eq(x => x.DesignationId, filter.DesignationId));
-            }
 
             if (!string.IsNullOrWhiteSpace(filter.ManagerId))
-            {
                 filters.Add(filterBuilder.Eq(x => x.ManagerId, filter.ManagerId));
-            }
 
             if (filter.EmployeeStatus.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.EmployeeStatus, filter.EmployeeStatus.Value));
-            }
 
             if (filter.EmploymentType.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.EmploymentType, filter.EmploymentType.Value));
-            }
 
             if (filter.Gender.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.Gender, filter.Gender.Value));
-            }
 
             if (filter.JoiningDateFrom.HasValue)
-            {
                 filters.Add(filterBuilder.Gte(x => x.DateOfJoining, filter.JoiningDateFrom.Value));
-            }
 
             if (filter.JoiningDateTo.HasValue)
-            {
                 filters.Add(filterBuilder.Lte(x => x.DateOfJoining, filter.JoiningDateTo.Value));
-            }
 
             var combinedFilter = filterBuilder.And(filters);
 
