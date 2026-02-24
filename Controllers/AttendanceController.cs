@@ -49,8 +49,9 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result, "Check-out successful"));
         }
 
+        // FIX: Added SuperAdmin to allowed roles for manual attendance
         [HttpPost("manual")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin,Manager,SuperAdmin")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> MarkManualAttendance([FromBody] ManualAttendanceDto dto)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -155,8 +156,9 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<AttendanceResponseDto>>.SuccessResponse(result));
         }
 
+        // FIX: Added SuperAdmin to allowed roles
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin,Manager,SuperAdmin")]
         public async Task<ActionResult<ApiResponseDto<AttendanceResponseDto>>> UpdateAttendance(
             string id,
             [FromBody] ManualAttendanceDto dto)
@@ -173,8 +175,9 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<AttendanceResponseDto>.SuccessResponse(result, "Attendance updated successfully"));
         }
 
+        // FIX: Added SuperAdmin to allowed roles
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<ActionResult<ApiResponseDto<bool>>> DeleteAttendance(string id)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -189,8 +192,9 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Attendance deleted successfully"));
         }
 
+        // FIX: Added SuperAdmin to allowed roles
         [HttpPatch("{id}/approve")]
-        [Authorize(Roles = "Admin,Manager")]
+        [Authorize(Roles = "Admin,Manager,SuperAdmin")]
         public async Task<ActionResult<ApiResponseDto<bool>>> ApproveAttendance(string id)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -205,8 +209,9 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Attendance approved successfully"));
         }
 
+        // FIX: Added SuperAdmin to allowed roles
         [HttpPost("mark-absent")]
-        [Authorize(Roles = "Admin")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<ActionResult<ApiResponseDto<bool>>> MarkAbsentEmployees([FromQuery] DateTime? date = null)
         {
             var targetDate = date ?? DateTime.UtcNow.Date.AddDays(-1);

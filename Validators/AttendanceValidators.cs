@@ -12,6 +12,7 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
             RuleFor(x => x.CheckInTime)
                 .NotEmpty().WithMessage("Check-in time is required")
+                // FIX: Allow 60-second buffer for network latency / clock skew
                 .Must(BeValidCheckInTime).WithMessage("Check-in time cannot be in the future");
 
             RuleFor(x => x.CheckInMethod)
@@ -24,7 +25,10 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
         private bool BeValidCheckInTime(DateTime checkInTime)
         {
-            return checkInTime <= DateTime.UtcNow;
+            // FIX: Add 60-second tolerance for network latency and clock skew between
+            // browser and server. Without this, clients submitting "now" would fail
+            // because the request takes time to travel and be processed.
+            return checkInTime <= DateTime.UtcNow.AddSeconds(60);
         }
     }
 
@@ -37,6 +41,7 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
             RuleFor(x => x.CheckOutTime)
                 .NotEmpty().WithMessage("Check-out time is required")
+                // FIX: Same 60-second tolerance
                 .Must(BeValidCheckOutTime).WithMessage("Check-out time cannot be in the future");
 
             RuleFor(x => x.CheckOutMethod)
@@ -49,7 +54,7 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
         private bool BeValidCheckOutTime(DateTime checkOutTime)
         {
-            return checkOutTime <= DateTime.UtcNow;
+            return checkOutTime <= DateTime.UtcNow.AddSeconds(60);
         }
     }
 
@@ -97,7 +102,8 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
         private bool BeValidTime(DateTime? time)
         {
-            return !time.HasValue || time.Value <= DateTime.UtcNow;
+            // FIX: Same tolerance
+            return !time.HasValue || time.Value <= DateTime.UtcNow.AddSeconds(60);
         }
 
         private bool BeAfterCheckIn(ManualAttendanceDto dto, DateTime? checkOutTime)
