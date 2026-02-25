@@ -58,27 +58,18 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             }
 
             if (filter.IsActive.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.IsActive, filter.IsActive.Value));
-            }
 
             if (filter.Level.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.Level, filter.Level.Value));
-            }
 
             if (filter.MinLevel.HasValue)
-            {
                 filters.Add(filterBuilder.Gte(x => x.Level, filter.MinLevel.Value));
-            }
 
             if (filter.MaxLevel.HasValue)
-            {
                 filters.Add(filterBuilder.Lte(x => x.Level, filter.MaxLevel.Value));
-            }
 
             var combinedFilter = filterBuilder.And(filters);
-
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
             var sortBuilder = Builders<Designation>.Sort;
@@ -118,8 +109,12 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<int> GetEmployeeCountByDesignationAsync(string designationId)
         {
-            return (int)await _employeeCollection
-                .CountDocumentsAsync(x => x.DesignationId == designationId && !x.IsDeleted);
+            var filter = Builders<Employee>.Filter.And(
+                Builders<Employee>.Filter.Eq(x => x.DesignationId, designationId),
+                Builders<Employee>.Filter.Eq(x => x.IsDeleted, false)
+            );
+
+            return (int)await _employeeCollection.CountDocumentsAsync(filter);
         }
     }
 }
