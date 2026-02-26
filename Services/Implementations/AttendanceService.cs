@@ -11,32 +11,46 @@ namespace AttendanceManagementSystem.Services.Implementations
     {
         private readonly IAttendanceRepository _attendanceRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IUserRepository _userRepository;
 
-        private readonly TimeSpan _standardCheckInTime = new TimeSpan(9, 0, 0); 
-        private readonly TimeSpan _graceperiod = new TimeSpan(0, 15, 0); 
+        private readonly TimeSpan _standardCheckInTime = new TimeSpan(9, 0, 0);
+        private readonly TimeSpan _graceperiod = new TimeSpan(0, 15, 0);
         private readonly TimeSpan _minimumWorkingHours = new TimeSpan(8, 0, 0);
-        private readonly TimeSpan _halfDayMinimumHours = new TimeSpan(4, 0, 0); 
-        private readonly TimeSpan _standardCheckOutTime = new TimeSpan(18, 0, 0); 
+        private readonly TimeSpan _halfDayMinimumHours = new TimeSpan(4, 0, 0);
+        private readonly TimeSpan _standardCheckOutTime = new TimeSpan(18, 0, 0);
 
         public AttendanceService(
             IAttendanceRepository attendanceRepository,
-            IEmployeeRepository employeeRepository)
+            IEmployeeRepository employeeRepository,
+            IUserRepository userRepository)
         {
             _attendanceRepository = attendanceRepository;
             _employeeRepository = employeeRepository;
+            _userRepository = userRepository;
         }
 
-        public async Task<AttendanceResponseDto?> CheckInAsync(CheckInDto dto, string createdBy)
+        private async Task<string?> ResolveEmployeeIdFromUserIdAsync(string userId)
         {
-            var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
+            var user = await _userRepository.GetByIdAsync(userId);
+            return user?.EmployeeId;
+        }
+
+        public async Task<AttendanceResponseDto?> CheckInAsync(CheckInDto dto, string userId)
+        {
+            // Resolve the actual EmployeeId from the authenticated UserId
+            var employeeId = await ResolveEmployeeIdFromUserIdAsync(userId);
+            if (string.IsNullOrEmpty(employeeId))
+                return null;
+
+            var employee = await _employeeRepository.GetByIdAsync(employeeId);
             if (employee == null)
                 return null;
 
             var today = DateTime.UtcNow.Date;
-            var existingAttendance = await _attendanceRepository.GetByEmployeeAndDateAsync(dto.EmployeeId, today);
+            var existingAttendance = await _attendanceRepository.GetByEmployeeAndDateAsync(employeeId, today);
 
             if (existingAttendance != null && existingAttendance.CheckInTime.HasValue)
-                return null; 
+                return null;
 
             var checkInTime = dto.CheckInTime;
             var checkInTimeOfDay = checkInTime.TimeOfDay;
@@ -47,7 +61,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             var attendance = new Attendance
             {
-                EmployeeId = dto.EmployeeId,
+                EmployeeId = employeeId,
                 AttendanceDate = today,
                 CheckInTime = checkInTime,
                 Status = AttendanceStatus.Present,
@@ -60,28 +74,32 @@ namespace AttendanceManagementSystem.Services.Implementations
                 CheckInMethod = dto.CheckInMethod,
                 CheckInDeviceId = dto.CheckInDeviceId,
                 Remarks = dto.Remarks,
-                CreatedBy = createdBy
+                CreatedBy = userId
             };
 
             var created = await _attendanceRepository.CreateAsync(attendance);
             return await MapToResponseDtoAsync(created);
         }
 
-        public async Task<AttendanceResponseDto?> CheckOutAsync(CheckOutDto dto, string updatedBy)
+        public async Task<AttendanceResponseDto?> CheckOutAsync(CheckOutDto dto, string userId)
         {
+            // Resolve the actual EmployeeId from the authenticated UserId
+            var employeeId = await ResolveEmployeeIdFromUserIdAsync(userId);
+            if (string.IsNullOrEmpty(employeeId))
+                return null;
+
             var today = DateTime.UtcNow.Date;
-            var attendance = await _attendanceRepository.GetByEmployeeAndDateAsync(dto.EmployeeId, today);
+            var attendance = await _attendanceRepository.GetByEmployeeAndDateAsync(employeeId, today);
 
             if (attendance == null || !attendance.CheckInTime.HasValue)
-                return null; 
+                return null;
 
             if (attendance.CheckOutTime.HasValue)
-                return null; 
+                return null;
 
             var checkOutTime = dto.CheckOutTime;
             var checkOutTimeOfDay = checkOutTime.TimeOfDay;
 
-            var workingHours = attendance.CalculateWorkingHours();
             attendance.CheckOutTime = checkOutTime;
             attendance.WorkingHours = (checkOutTime - attendance.CheckInTime.Value).TotalHours;
 
@@ -122,7 +140,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                     : $"{attendance.Remarks}; {dto.Remarks}";
             }
 
-            attendance.UpdatedBy = updatedBy;
+            attendance.UpdatedBy = userId;
 
             var updated = await _attendanceRepository.UpdateAsync(attendance.Id, attendance);
             return updated ? await MapToResponseDtoAsync(attendance) : null;
@@ -139,7 +157,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 dto.AttendanceDate.Date);
 
             if (existingAttendance != null)
-                return null; 
+                return null;
 
             var attendance = new Attendance
             {
