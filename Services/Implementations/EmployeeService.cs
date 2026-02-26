@@ -10,10 +10,17 @@ namespace AttendanceManagementSystem.Services.Implementations
     public class EmployeeService : IEmployeeService
     {
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly IDesignationRepository _designationRepository;
 
-        public EmployeeService(IEmployeeRepository employeeRepository)
+        public EmployeeService(
+            IEmployeeRepository employeeRepository,
+            IDepartmentRepository departmentRepository,
+            IDesignationRepository designationRepository)
         {
             _employeeRepository = employeeRepository;
+            _departmentRepository = departmentRepository;
+            _designationRepository = designationRepository;
         }
 
         public async Task<EmployeeResponseDto?> CreateEmployeeAsync(CreateEmployeeDto dto, string createdBy)
@@ -49,32 +56,49 @@ namespace AttendanceManagementSystem.Services.Implementations
             };
 
             var createdEmployee = await _employeeRepository.CreateAsync(employee);
-            return MapToResponseDto(createdEmployee);
+            return await MapToResponseDtoAsync(createdEmployee);
         }
 
         public async Task<EmployeeResponseDto?> GetEmployeeByIdAsync(string id)
         {
             var employee = await _employeeRepository.GetByIdAsync(id);
-            return employee != null ? MapToResponseDto(employee) : null;
+            return employee != null ? await MapToResponseDtoAsync(employee) : null;
         }
 
         public async Task<EmployeeResponseDto?> GetEmployeeByCodeAsync(string employeeCode)
         {
             var employee = await _employeeRepository.GetByEmployeeCodeAsync(employeeCode);
-            return employee != null ? MapToResponseDto(employee) : null;
+            return employee != null ? await MapToResponseDtoAsync(employee) : null;
         }
 
         public async Task<EmployeeResponseDto?> GetEmployeeByEmailAsync(string email)
         {
             var employee = await _employeeRepository.GetByEmailAsync(email);
-            return employee != null ? MapToResponseDto(employee) : null;
+            return employee != null ? await MapToResponseDtoAsync(employee) : null;
         }
 
         public async Task<PagedResultDto<EmployeeResponseDto>> GetFilteredEmployeesAsync(EmployeeFilterDto filter)
         {
             var (items, totalCount) = await _employeeRepository.GetFilteredEmployeesAsync(filter);
 
-            var employeeDtos = items.Select(MapToResponseDto).ToList();
+            // Collect unique department and designation IDs to batch-resolve names
+            var departmentIds = items
+                .Select(e => e.DepartmentId)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct()
+                .ToList();
+
+            var designationIds = items
+                .Select(e => e.DesignationId)
+                .Where(id => !string.IsNullOrEmpty(id))
+                .Distinct()
+                .ToList();
+
+            // Batch fetch departments and designations
+            var departmentMap = await GetDepartmentNamesAsync(departmentIds);
+            var designationMap = await GetDesignationNamesAsync(designationIds);
+
+            var employeeDtos = items.Select(e => MapToResponseDto(e, departmentMap, designationMap)).ToList();
 
             return new PagedResultDto<EmployeeResponseDto>(
                 employeeDtos,
@@ -87,19 +111,28 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<List<EmployeeResponseDto>> GetEmployeesByDepartmentAsync(string departmentId)
         {
             var employees = await _employeeRepository.GetEmployeesByDepartmentAsync(departmentId);
-            return employees.Select(MapToResponseDto).ToList();
+            var result = new List<EmployeeResponseDto>();
+            foreach (var e in employees)
+                result.Add(await MapToResponseDtoAsync(e));
+            return result;
         }
 
         public async Task<List<EmployeeResponseDto>> GetEmployeesByManagerAsync(string managerId)
         {
             var employees = await _employeeRepository.GetEmployeesByManagerAsync(managerId);
-            return employees.Select(MapToResponseDto).ToList();
+            var result = new List<EmployeeResponseDto>();
+            foreach (var e in employees)
+                result.Add(await MapToResponseDtoAsync(e));
+            return result;
         }
 
         public async Task<List<EmployeeResponseDto>> GetActiveEmployeesAsync()
         {
             var employees = await _employeeRepository.GetActiveEmployeesAsync();
-            return employees.Select(MapToResponseDto).ToList();
+            var result = new List<EmployeeResponseDto>();
+            foreach (var e in employees)
+                result.Add(await MapToResponseDtoAsync(e));
+            return result;
         }
 
         public async Task<EmployeeResponseDto?> UpdateEmployeeAsync(string id, UpdateEmployeeDto dto, string updatedBy)
@@ -171,7 +204,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             employee.UpdatedBy = updatedBy;
 
             var updated = await _employeeRepository.UpdateAsync(id, employee);
-            return updated ? MapToResponseDto(employee) : null;
+            return updated ? await MapToResponseDtoAsync(employee) : null;
         }
 
         public async Task<bool> DeleteEmployeeAsync(string id, string deletedBy)
@@ -211,7 +244,44 @@ namespace AttendanceManagementSystem.Services.Implementations
             return statistics;
         }
 
-        private EmployeeResponseDto MapToResponseDto(Employee employee)
+        private async Task<EmployeeResponseDto> MapToResponseDtoAsync(Employee employee)
+        {
+            string? departmentName = null;
+            string? designationName = null;
+
+            if (!string.IsNullOrEmpty(employee.DepartmentId) && Guid.TryParse(employee.DepartmentId, out var deptGuid))
+            {
+                try
+                {
+                    var dept = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
+                    departmentName = dept?.DepartmentName;
+                }
+                catch { /* leave null if not found */ }
+            }
+
+            if (!string.IsNullOrEmpty(employee.DesignationId))
+            {
+                try
+                {
+                    var desig = await _designationRepository.GetByIdAsync(employee.DesignationId);
+                    designationName = desig?.DesignationName;
+                }
+                catch { /* leave null if not found */ }
+            }
+
+            return BuildDto(employee, departmentName, designationName);
+        }
+        private EmployeeResponseDto MapToResponseDto(
+            Employee employee,
+            Dictionary<string, string> departmentMap,
+            Dictionary<string, string> designationMap)
+        {
+            departmentMap.TryGetValue(employee.DepartmentId ?? "", out var departmentName);
+            designationMap.TryGetValue(employee.DesignationId ?? "", out var designationName);
+            return BuildDto(employee, departmentName, designationName);
+        }
+
+        private EmployeeResponseDto BuildDto(Employee employee, string? departmentName, string? designationName)
         {
             return new EmployeeResponseDto
             {
@@ -230,7 +300,9 @@ namespace AttendanceManagementSystem.Services.Implementations
                 GenderName = employee.Gender.ToString(),
                 Address = employee.Address,
                 DepartmentId = employee.DepartmentId,
+                DepartmentName = departmentName,       
                 DesignationId = employee.DesignationId,
+                DesignationName = designationName,     
                 ManagerId = employee.ManagerId,
                 DateOfJoining = employee.DateOfJoining,
                 DateOfLeaving = employee.DateOfLeaving,
@@ -244,6 +316,40 @@ namespace AttendanceManagementSystem.Services.Implementations
                 CreatedAt = employee.CreatedAt,
                 UpdatedAt = employee.UpdatedAt
             };
+        }
+
+        private async Task<Dictionary<string, string>> GetDepartmentNamesAsync(List<string> ids)
+        {
+            var map = new Dictionary<string, string>();
+            foreach (var id in ids)
+            {
+                try
+                {
+                    if (!Guid.TryParse(id, out var deptGuid))
+                        continue;
+
+                    var dept = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
+                    if (dept != null)
+                        map[id] = dept.DepartmentName;
+                }
+                catch { /* skip if not found */ }
+            }
+            return map;
+        }
+        private async Task<Dictionary<string, string>> GetDesignationNamesAsync(List<string> ids)
+        {
+            var map = new Dictionary<string, string>();
+            foreach (var id in ids)
+            {
+                try
+                {
+                    var desig = await _designationRepository.GetByIdAsync(id);
+                    if (desig != null)
+                        map[id] = desig.DesignationName;
+                }
+                catch { /* skip if not found */ }
+            }
+            return map;
         }
     }
 }
