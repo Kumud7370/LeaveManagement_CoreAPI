@@ -2,6 +2,7 @@
 using AttendanceManagementSystem.Models.DTOs.Designation;
 using AttendanceManagementSystem.Models.Entities;
 using AttendanceManagementSystem.Repositories.Interfaces;
+using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace AttendanceManagementSystem.Repositories.Implementations
@@ -12,12 +13,13 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public DesignationRepository(IMongoDbContext context) : base(context)
         {
-            _employeeCollection = context.GetCollection<Employee>("Employees");
+            _employeeCollection = context.GetCollection<Employee>("employees");
         }
 
         public async Task<Designation?> GetByDesignationCodeAsync(string designationCode)
         {
-            return await _collection.Find(x => x.DesignationCode == designationCode && !x.IsDeleted)
+            return await _collection
+                .Find(x => x.DesignationCode == designationCode && !x.IsDeleted)
                 .FirstOrDefaultAsync();
         }
 
@@ -50,9 +52,9 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
                 var searchFilter = filterBuilder.Or(
-                    filterBuilder.Regex(x => x.DesignationCode, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
-                    filterBuilder.Regex(x => x.DesignationName, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
-                    filterBuilder.Regex(x => x.Description, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"))
+                    filterBuilder.Regex(x => x.DesignationCode, new BsonRegularExpression(filter.SearchTerm, "i")),
+                    filterBuilder.Regex(x => x.DesignationName, new BsonRegularExpression(filter.SearchTerm, "i")),
+                    filterBuilder.Regex(x => x.Description, new BsonRegularExpression(filter.SearchTerm, "i"))
                 );
                 filters.Add(searchFilter);
             }
@@ -75,10 +77,18 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             var sortBuilder = Builders<Designation>.Sort;
             SortDefinition<Designation> sort = filter.SortBy.ToLower() switch
             {
-                "designationname" => filter.SortDescending ? sortBuilder.Descending(x => x.DesignationName) : sortBuilder.Ascending(x => x.DesignationName),
-                "level" => filter.SortDescending ? sortBuilder.Descending(x => x.Level) : sortBuilder.Ascending(x => x.Level),
-                "createdat" => filter.SortDescending ? sortBuilder.Descending(x => x.CreatedAt) : sortBuilder.Ascending(x => x.CreatedAt),
-                _ => filter.SortDescending ? sortBuilder.Descending(x => x.DesignationCode) : sortBuilder.Ascending(x => x.DesignationCode)
+                "designationname" => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.DesignationName)
+                    : sortBuilder.Ascending(x => x.DesignationName),
+                "level" => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.Level)
+                    : sortBuilder.Ascending(x => x.Level),
+                "createdat" => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.CreatedAt)
+                    : sortBuilder.Ascending(x => x.CreatedAt),
+                _ => filter.SortDescending
+                    ? sortBuilder.Descending(x => x.DesignationCode)
+                    : sortBuilder.Ascending(x => x.DesignationCode)
             };
 
             var items = await _collection
@@ -109,6 +119,9 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<int> GetEmployeeCountByDesignationAsync(string designationId)
         {
+            if (string.IsNullOrEmpty(designationId))
+                return 0;
+
             var filter = Builders<Employee>.Filter.And(
                 Builders<Employee>.Filter.Eq(x => x.DesignationId, designationId),
                 Builders<Employee>.Filter.Eq(x => x.IsDeleted, false)
