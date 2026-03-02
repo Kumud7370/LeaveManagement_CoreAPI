@@ -48,10 +48,10 @@ namespace AttendanceManagementSystem.Services.Implementations
                 dto.EmployeeId, dto.LeaveTypeId, year);
 
             if (leaveBalance == null)
-                return null; 
+                return null;
 
             if (!leaveBalance.HasSufficientBalance(dto.TotalDays))
-                return null; 
+                return null;
 
             var leave = new Leave
             {
@@ -94,6 +94,30 @@ namespace AttendanceManagementSystem.Services.Implementations
                 filter.PageNumber,
                 filter.PageSize
             );
+        }
+
+        public async Task<PagedResultDto<LeaveResponseDto>> GetMyLeavesAsync(LeaveFilterDto filter, string userEmail)
+        {
+            var user = await _userRepository.GetByEmailAsync(userEmail);
+            if (user == null)
+                return new PagedResultDto<LeaveResponseDto>(
+                    new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+
+            var employee = await _employeeRepository.GetByUserIdAsync(user.Id);
+            if (employee == null)
+                return new PagedResultDto<LeaveResponseDto>(
+                    new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+
+            filter.EmployeeId = employee.Id;
+
+            var (items, totalCount) = await _leaveRepository.GetFilteredLeavesAsync(filter);
+
+            var leaveDtos = new List<LeaveResponseDto>();
+            foreach (var leave in items)
+                leaveDtos.Add(await MapToResponseDtoAsync(leave));
+
+            return new PagedResultDto<LeaveResponseDto>(
+                leaveDtos, totalCount, filter.PageNumber, filter.PageSize);
         }
 
         public async Task<List<LeaveResponseDto>> GetLeavesByEmployeeIdAsync(string employeeId)

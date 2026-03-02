@@ -52,6 +52,23 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.SuccessResponse(result));
         }
 
+        /// <summary>
+        /// Employee-facing endpoint. Resolves the correct Employee from the JWT
+        /// email claim server-side — the client never needs to know the Employee ObjectId.
+        /// </summary>
+        [HttpPost("my-leaves")]
+        public async Task<ActionResult<ApiResponseDto<PagedResultDto<LeaveResponseDto>>>> GetMyLeaves([FromBody] LeaveFilterDto filter)
+        {
+            var email = User.FindFirst(ClaimTypes.Email)?.Value
+                     ?? User.FindFirst("email")?.Value;
+
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.ErrorResponse("User email not found in token"));
+
+            var result = await _leaveService.GetMyLeavesAsync(filter, email);
+            return Ok(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.SuccessResponse(result));
+        }
+
         [HttpGet("employee/{employeeId}")]
         public async Task<ActionResult<ApiResponseDto<List<LeaveResponseDto>>>> GetLeavesByEmployee(string employeeId)
         {
@@ -175,23 +192,5 @@ namespace AttendanceManagementSystem.Controllers
 
             return Ok(ApiResponseDto<bool>.SuccessResponse(result));
         }
-    }
-
-    public class RejectLeaveRequestDto
-    {
-        public string RejectionReason { get; set; } = string.Empty;
-    }
-
-    public class CancelLeaveRequestDto
-    {
-        public string CancellationReason { get; set; } = string.Empty;
-    }
-    public class ValidateLeaveRequestDto
-    {
-        public string EmployeeId { get; set; } = string.Empty;
-        public string LeaveTypeId { get; set; } = string.Empty;
-        public DateTime StartDate { get; set; }
-        public DateTime EndDate { get; set; }
-        public string? ExcludeLeaveId { get; set; }
     }
 }

@@ -9,6 +9,7 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<LeaveResponseDto?> CreateLeaveAsync(CreateLeaveDto dto, string createdBy);
         Task<LeaveResponseDto?> GetLeaveByIdAsync(string id);
         Task<PagedResultDto<LeaveResponseDto>> GetFilteredLeavesAsync(LeaveFilterDto filter);
+        Task<PagedResultDto<LeaveResponseDto>> GetMyLeavesAsync(LeaveFilterDto filter, string userEmail);
         Task<List<LeaveResponseDto>> GetLeavesByEmployeeIdAsync(string employeeId);
         Task<List<LeaveResponseDto>> GetPendingLeavesAsync();
         Task<List<LeaveResponseDto>> GetUpcomingLeavesAsync(int days = 7);
