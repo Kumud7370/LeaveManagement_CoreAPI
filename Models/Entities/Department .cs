@@ -20,14 +20,6 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("description")]
         public string? Description { get; set; }
 
-        [BsonElement("headOfDepartment")]
-        [BsonRepresentation(BsonType.String)]
-        public Guid? HeadOfDepartment { get; set; }
-
-        [BsonElement("parentDepartmentId")]
-        [BsonRepresentation(BsonType.String)]
-        public Guid? ParentDepartmentId { get; set; }
-
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 
@@ -62,63 +54,27 @@ namespace AttendanceManagementSystem.Models.Entities
         public virtual ICollection<Employee>? Employees { get; set; }
 
         [BsonIgnore]
-        public virtual Department? ParentDepartment { get; set; }
-
-        [BsonIgnore]
         public virtual ICollection<Department>? ChildDepartments { get; set; }
 
         [BsonIgnore]
-        public virtual Employee? DepartmentHead { get; set; }
+        public string FullPath => DepartmentName;
 
         [BsonIgnore]
-        public string FullPath => GetFullPath();
-
-        [BsonIgnore]
-        public int Level => GetDepartmentLevel();
+        public int Level => 0;
 
         public Department()
         {
             DepartmentId = Guid.NewGuid();
             CreatedAt = DateTime.UtcNow;
-            Id = ObjectId.GenerateNewId().ToString(); 
-        }
-
-        private string GetFullPath()
-        {
-            var path = new List<string> { DepartmentName };
-            var current = ParentDepartment;
-
-            while (current != null)
-            {
-                path.Insert(0, current.DepartmentName);
-                current = current.ParentDepartment;
-            }
-
-            return string.Join(" > ", path);
-        }
-
-        private int GetDepartmentLevel()
-        {
-            int level = 0;
-            var current = ParentDepartment;
-
-            while (current != null)
-            {
-                level++;
-                current = current.ParentDepartment;
-            }
-
-            return level;
+            Id = ObjectId.GenerateNewId().ToString();
         }
 
         public bool CanDelete()
         {
             if (Employees?.Count > 0)
                 return false;
-
             if (ChildDepartments?.Count > 0)
                 return false;
-
             return true;
         }
     }

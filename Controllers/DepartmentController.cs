@@ -38,9 +38,7 @@ namespace AttendanceManagementSystem.Controllers
                 }
 
                 if (Guid.TryParse(userIdString, out var userGuid))
-                {
                     return userGuid;
-                }
 
                 return GenerateGuidFromString(userIdString);
             }
@@ -68,7 +66,7 @@ namespace AttendanceManagementSystem.Controllers
             var result = await _departmentService.CreateDepartmentAsync(dto, userGuid.Value);
 
             if (result == null)
-                return BadRequest(ApiResponseDto<DepartmentResponseDto>.ErrorResponse("Department code already exists or parent department/head not found"));
+                return BadRequest(ApiResponseDto<DepartmentResponseDto>.ErrorResponse("Department code already exists"));
 
             return Ok(ApiResponseDto<DepartmentResponseDto>.SuccessResponse(result, "Department created successfully"));
         }
@@ -151,7 +149,7 @@ namespace AttendanceManagementSystem.Controllers
             var result = await _departmentService.UpdateDepartmentAsync(dto, userGuid.Value);
 
             if (result == null)
-                return BadRequest(ApiResponseDto<DepartmentResponseDto>.ErrorResponse("Failed to update department. Check if department code is unique and parent department exists."));
+                return BadRequest(ApiResponseDto<DepartmentResponseDto>.ErrorResponse("Failed to update department. Check if department code is unique."));
 
             return Ok(ApiResponseDto<DepartmentResponseDto>.SuccessResponse(result, "Department updated successfully"));
         }

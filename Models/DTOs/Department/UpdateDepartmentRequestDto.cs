@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations;
-
 namespace AttendanceManagementSystem.Models.DTOs.Department
 {
     public class UpdateDepartmentRequestDto
@@ -18,10 +17,6 @@ namespace AttendanceManagementSystem.Models.DTOs.Department
 
         [StringLength(500, ErrorMessage = "Description cannot exceed 500 characters")]
         public string? Description { get; set; }
-
-        public Guid? HeadOfDepartment { get; set; }
-
-        public Guid? ParentDepartmentId { get; set; }
 
         [Range(0, int.MaxValue, ErrorMessage = "Display order must be a positive number")]
         public int DisplayOrder { get; set; } = 0;
