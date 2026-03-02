@@ -23,21 +23,12 @@ namespace AttendanceManagementSystem.Validators
 
             RuleFor(x => x.DisplayOrder)
                 .GreaterThanOrEqualTo(0).WithMessage("Display order must be a positive number");
-
-            RuleFor(x => x.ParentDepartmentId)
-                .NotEqual(Guid.Empty).WithMessage("Parent department ID cannot be empty")
-                .When(x => x.ParentDepartmentId.HasValue);
-
-            RuleFor(x => x.HeadOfDepartment)
-                .NotEqual(Guid.Empty).WithMessage("Head of department ID cannot be empty")
-                .When(x => x.HeadOfDepartment.HasValue);
         }
 
         private bool BeValidDepartmentName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return false;
-
             return System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9\s&\-\(\)\.]+$");
         }
     }
@@ -66,25 +57,16 @@ namespace AttendanceManagementSystem.Validators
 
             RuleFor(x => x.DisplayOrder)
                 .GreaterThanOrEqualTo(0).WithMessage("Display order must be a positive number");
-
-            RuleFor(x => x.ParentDepartmentId)
-                .NotEqual(Guid.Empty).WithMessage("Parent department ID cannot be empty")
-                .NotEqual(x => x.DepartmentId).WithMessage("Department cannot be its own parent")
-                .When(x => x.ParentDepartmentId.HasValue);
-
-            RuleFor(x => x.HeadOfDepartment)
-                .NotEqual(Guid.Empty).WithMessage("Head of department ID cannot be empty")
-                .When(x => x.HeadOfDepartment.HasValue);
         }
 
         private bool BeValidDepartmentName(string name)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return false;
-
             return System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-zA-Z0-9\s&\-\(\)\.]+$");
         }
     }
+
     public class DepartmentFilterValidator : AbstractValidator<DepartmentFilterRequestDto>
     {
         public DepartmentFilterValidator()
@@ -108,14 +90,6 @@ namespace AttendanceManagementSystem.Validators
             RuleFor(x => x.SearchTerm)
                 .MaximumLength(100).WithMessage("Search term cannot exceed 100 characters")
                 .When(x => !string.IsNullOrEmpty(x.SearchTerm));
-
-            RuleFor(x => x.ParentDepartmentId)
-                .NotEqual(Guid.Empty).WithMessage("Parent department ID cannot be empty")
-                .When(x => x.ParentDepartmentId.HasValue);
-
-            RuleFor(x => x.HeadOfDepartment)
-                .NotEqual(Guid.Empty).WithMessage("Head of department ID cannot be empty")
-                .When(x => x.HeadOfDepartment.HasValue);
         }
 
         private bool BeValidSortField(string sortBy)
