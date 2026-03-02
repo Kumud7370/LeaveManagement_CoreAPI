@@ -6,10 +6,6 @@
         public string DepartmentCode { get; set; } = string.Empty;
         public string DepartmentName { get; set; } = string.Empty;
         public string? Description { get; set; }
-        public Guid? HeadOfDepartment { get; set; }
-        public string? HeadOfDepartmentName { get; set; }
-        public Guid? ParentDepartmentId { get; set; }
-        public string? ParentDepartmentName { get; set; }
         public bool IsActive { get; set; }
         public int DisplayOrder { get; set; }
         public int EmployeeCount { get; set; }
@@ -24,7 +20,6 @@
         public int Level { get; set; }
         public List<DepartmentResponseDto>? ChildDepartments { get; set; }
         public List<EmployeeSummaryDto>? Employees { get; set; }
-        public EmployeeSummaryDto? DepartmentHead { get; set; }
         public AuditInfoDto? AuditInfo { get; set; }
     }
 

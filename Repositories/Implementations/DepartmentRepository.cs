@@ -51,9 +51,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             var filters = new List<FilterDefinition<Department>>();
 
             if (!filter.IncludeDeleted)
-            {
                 filters.Add(filterBuilder.Eq(x => x.IsDeleted, false));
-            }
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
@@ -66,24 +64,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             }
 
             if (filter.IsActive.HasValue)
-            {
                 filters.Add(filterBuilder.Eq(x => x.IsActive, filter.IsActive.Value));
-            }
-
-            if (filter.ParentDepartmentId.HasValue)
-            {
-                filters.Add(filterBuilder.Eq(x => x.ParentDepartmentId, filter.ParentDepartmentId.Value));
-            }
-
-            if (filter.RootLevelOnly.HasValue && filter.RootLevelOnly.Value)
-            {
-                filters.Add(filterBuilder.Eq(x => x.ParentDepartmentId, null));
-            }
-
-            if (filter.HeadOfDepartment.HasValue)
-            {
-                filters.Add(filterBuilder.Eq(x => x.HeadOfDepartment, filter.HeadOfDepartment.Value));
-            }
 
             var combinedFilter = filters.Count > 0
                 ? filterBuilder.And(filters)
@@ -128,17 +109,13 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<List<Department>> GetChildDepartmentsAsync(Guid parentDepartmentId)
         {
-            return await _collection
-                .Find(x => x.ParentDepartmentId == parentDepartmentId && !x.IsDeleted)
-                .SortBy(x => x.DisplayOrder)
-                .ThenBy(x => x.DepartmentName)
-                .ToListAsync();
+            return new List<Department>();
         }
 
         public async Task<List<Department>> GetRootDepartmentsAsync()
         {
             return await _collection
-                .Find(x => x.ParentDepartmentId == null && !x.IsDeleted)
+                .Find(x => !x.IsDeleted)
                 .SortBy(x => x.DisplayOrder)
                 .ThenBy(x => x.DepartmentName)
                 .ToListAsync();
@@ -163,22 +140,18 @@ namespace AttendanceManagementSystem.Repositories.Implementations
         public async Task<int> GetEmployeeCountByDepartmentAsync(Guid departmentId)
         {
             var departmentIdString = departmentId.ToString();
-
             return (int)await _employeeCollection
                 .CountDocumentsAsync(x => x.DepartmentId == departmentIdString && !x.IsDeleted);
         }
 
         public async Task<bool> HasChildDepartmentsAsync(Guid departmentId)
         {
-            return await _collection
-                .Find(x => x.ParentDepartmentId == departmentId && !x.IsDeleted)
-                .AnyAsync();
+            return false;
         }
 
         public async Task<bool> HasEmployeesAsync(Guid departmentId)
         {
             var departmentIdString = departmentId.ToString();
-
             return await _employeeCollection
                 .Find(x => x.DepartmentId == departmentIdString && !x.IsDeleted)
                 .AnyAsync();

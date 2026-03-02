@@ -9,7 +9,7 @@ namespace AttendanceManagementSystem.Repositories.Interfaces
         Task<Department?> GetByDepartmentIdAsync(Guid departmentId);
         Task<bool> IsDepartmentCodeExistsAsync(string departmentCode, Guid? excludeId = null);
         Task<(List<Department> Items, int TotalCount)> GetFilteredDepartmentsAsync(DepartmentFilterRequestDto filter);
-        Task<List<Department>> GetChildDepartmentsAsync(Guid parentDepartmentId);
+        Task<List<Department>> GetChildDepartmentsAsync(Guid departmentId);
         Task<List<Department>> GetRootDepartmentsAsync();
         Task<List<Department>> GetActiveDepartmentsAsync();
         Task<Department?> GetDepartmentWithDetailsAsync(Guid departmentId);
