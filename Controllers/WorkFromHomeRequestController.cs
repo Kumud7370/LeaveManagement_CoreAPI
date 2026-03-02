@@ -73,8 +73,10 @@ namespace AttendanceManagementSystem.Controllers
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(ApiResponseDto<List<WfhRequestResponseDto>>.ErrorResponse("User not authenticated"));
 
-            var employeeId = User.FindFirst("EmployeeId")?.Value ?? userId;
-            var result = await _wfhRequestService.GetEmployeeWfhRequestsAsync(employeeId);
+            // Look up employee by email from JWT — this correctly resolves the Employee.Id
+            // which is what WFH requests are stored against (not the User.Id)
+            var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            var result = await _wfhRequestService.GetMyWfhRequestsByUserAsync(userId, userEmail);
             return Ok(ApiResponseDto<List<WfhRequestResponseDto>>.SuccessResponse(result));
         }
 

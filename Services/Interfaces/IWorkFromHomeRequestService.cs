@@ -19,5 +19,6 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<Dictionary<string, int>> GetWfhRequestStatisticsByStatusAsync();
         Task<List<WfhRequestResponseDto>> GetEmployeeWfhRequestsByDateRangeAsync(string employeeId, DateTime startDate, DateTime endDate);
         Task<WfhRequestResponseDto?> CreateWfhRequestByUserAsync(string userId, string userEmail, CreateWfhRequestDto dto);
+        Task<List<WfhRequestResponseDto>> GetMyWfhRequestsByUserAsync(string userId, string? userEmail);
     }
 }

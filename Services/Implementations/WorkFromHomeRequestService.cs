@@ -249,6 +249,29 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await MapToResponseDtoAsync(createdRequest);
         }
 
+        public async Task<List<WfhRequestResponseDto>> GetMyWfhRequestsByUserAsync(string userId, string? userEmail)
+        {
+            // Try to find employee by email first (most reliable)
+            if (!string.IsNullOrEmpty(userEmail))
+            {
+                var employee = await _employeeRepository.GetByEmailAsync(userEmail);
+                if (employee != null)
+                {
+                    return await GetEmployeeWfhRequestsAsync(employee.Id);
+                }
+            }
+
+            // Fallback: try to find employee by userId link
+            var employeeByUserId = await _employeeRepository.GetByUserIdAsync(userId);
+            if (employeeByUserId != null)
+            {
+                return await GetEmployeeWfhRequestsAsync(employeeByUserId.Id);
+            }
+
+            // Nothing found
+            return new List<WfhRequestResponseDto>();
+        }
+
         private async Task<WfhRequestResponseDto> MapToResponseDtoAsync(WorkFromHomeRequest wfhRequest)
         {
             var employee = await _employeeRepository.GetByIdAsync(wfhRequest.EmployeeId);
