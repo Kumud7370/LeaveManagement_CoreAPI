@@ -11,23 +11,24 @@ namespace AttendanceManagementSystem.Services.Implementations
     {
         private readonly IWorkFromHomeRequestRepository _wfhRequestRepository;
         private readonly IEmployeeRepository _employeeRepository;
+        private readonly IUserRepository _userRepository;
 
         public WorkFromHomeRequestService(
             IWorkFromHomeRequestRepository wfhRequestRepository,
-            IEmployeeRepository employeeRepository)
+            IEmployeeRepository employeeRepository,
+            IUserRepository userRepository)
         {
             _wfhRequestRepository = wfhRequestRepository;
             _employeeRepository = employeeRepository;
+            _userRepository = userRepository;
         }
 
         public async Task<WfhRequestResponseDto?> CreateWfhRequestAsync(string employeeId, CreateWfhRequestDto dto, string createdBy)
         {
-            // Validate employee exists
             var employee = await _employeeRepository.GetByIdAsync(employeeId);
             if (employee == null)
                 return null;
 
-            // Check for overlapping requests
             if (await _wfhRequestRepository.HasOverlappingRequestAsync(employeeId, dto.StartDate, dto.EndDate))
                 return null;
 
@@ -114,14 +115,11 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (wfhRequest == null)
                 return null;
 
-            // Only allow updates to pending requests
             if (wfhRequest.Status != ApprovalStatus.Pending)
                 return null;
 
-            // Update only provided fields
             if (dto.StartDate.HasValue)
             {
-                // Check for overlapping requests if dates are changed
                 var endDate = dto.EndDate ?? wfhRequest.EndDate;
                 if (await _wfhRequestRepository.HasOverlappingRequestAsync(
                     wfhRequest.EmployeeId, dto.StartDate.Value, endDate, id))
@@ -132,7 +130,6 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             if (dto.EndDate.HasValue)
             {
-                // Check for overlapping requests if dates are changed
                 var startDate = dto.StartDate ?? wfhRequest.StartDate;
                 if (await _wfhRequestRepository.HasOverlappingRequestAsync(
                     wfhRequest.EmployeeId, startDate, dto.EndDate.Value, id))
@@ -168,11 +165,9 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (wfhRequest == null)
                 return null;
 
-            // Only allow approval/rejection of pending requests
             if (wfhRequest.Status != ApprovalStatus.Pending)
                 return null;
 
-            // Validate status
             if (dto.Status != ApprovalStatus.Approved && dto.Status != ApprovalStatus.Rejected)
                 return null;
 
@@ -196,7 +191,6 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (wfhRequest == null)
                 return false;
 
-            // Check if request can be cancelled
             if (!wfhRequest.CanBeCancelled())
                 return false;
 
@@ -234,12 +228,10 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<WfhRequestResponseDto?> CreateWfhRequestByUserAsync(string userId, string userEmail, CreateWfhRequestDto dto)
         {
-            // Find employee by email
             var employee = await _employeeRepository.GetByEmailAsync(userEmail);
             if (employee == null)
                 return null;
 
-            // Check for overlapping requests
             if (await _wfhRequestRepository.HasOverlappingRequestAsync(employee.Id, dto.StartDate, dto.EndDate))
                 return null;
 
@@ -261,10 +253,24 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var employee = await _employeeRepository.GetByIdAsync(wfhRequest.EmployeeId);
 
-            Employee? approver = null;
+            string? approverName = null;
             if (!string.IsNullOrEmpty(wfhRequest.ApprovedBy))
             {
-                approver = await _employeeRepository.GetByIdAsync(wfhRequest.ApprovedBy);
+                var approverEmployee = await _employeeRepository.GetByUserIdAsync(wfhRequest.ApprovedBy);
+                if (approverEmployee != null)
+                {
+                    approverName = approverEmployee.GetFullName();
+                }
+                else
+                {
+                    var approverUser = await _userRepository.GetByIdAsync(wfhRequest.ApprovedBy);
+                    if (approverUser != null)
+                    {
+                        approverName = !string.IsNullOrWhiteSpace(approverUser.Username)
+                            ? approverUser.Username
+                            : approverUser.Email;
+                    }
+                }
             }
 
             return new WfhRequestResponseDto
@@ -280,7 +286,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Status = wfhRequest.Status,
                 StatusName = wfhRequest.Status.ToString(),
                 ApprovedBy = wfhRequest.ApprovedBy,
-                ApproverName = approver?.GetFullName(),
+                ApproverName = approverName,
                 ApprovedDate = wfhRequest.ApprovedDate,
                 RejectionReason = wfhRequest.RejectionReason,
                 IsActive = wfhRequest.IsActive(),
