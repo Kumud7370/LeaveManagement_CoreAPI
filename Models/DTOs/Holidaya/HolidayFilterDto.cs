@@ -1,10 +1,13 @@
 ﻿using AttendanceManagementSystem.Models.Enums;
+using System.Text.Json.Serialization;
 
 namespace AttendanceManagementSystem.Models.DTOs.Holiday
 {
     public class HolidayFilterDto
     {
         public string? SearchTerm { get; set; }
+
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public HolidayType? HolidayType { get; set; }
         public bool? IsOptional { get; set; }
         public string? DepartmentId { get; set; }

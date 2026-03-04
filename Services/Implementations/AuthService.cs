@@ -80,7 +80,8 @@ namespace AttendanceManagementSystem.Services.Implementations
                     Email = user.Email,
                     FirstName = user.FirstName,
                     LastName = user.LastName,
-                    Roles = roleNames
+                    Roles = roleNames,
+                    EmployeeId = user.EmployeeId
                 }
             };
         }
@@ -116,7 +117,8 @@ namespace AttendanceManagementSystem.Services.Implementations
                     Email = user.Email,
                     FirstName = user.FirstName,
                     LastName = user.LastName,
-                    Roles = roleNames
+                    Roles = roleNames,
+                    EmployeeId = user.EmployeeId
                 }
             };
         }
