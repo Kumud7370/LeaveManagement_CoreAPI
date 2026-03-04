@@ -12,6 +12,10 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<PagedResultDto<RegularizationResponseDto>> GetFilteredAsync(RegularizationFilterDto filter);
         Task<List<RegularizationResponseDto>> GetPendingRegularizationsAsync();
         Task<bool> CancelRegularizationAsync(string id, string cancelledBy);
+
+        // ✅ NEW: hard soft-delete — sets IsDeleted = true via repository
+        Task<bool> DeleteRegularizationAsync(string id, string deletedBy);
+
         Task<int> GetPendingCountByEmployeeAsync(string employeeId);
     }
 }

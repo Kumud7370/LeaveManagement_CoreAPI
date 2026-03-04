@@ -25,32 +25,30 @@ namespace AttendanceManagementSystem.Services.Implementations
             _employeeRepository = employeeRepository;
         }
 
-        public async Task<RegularizationResponseDto?> RequestRegularizationAsync(RegularizationRequestDto dto, string requestedBy)
+        public async Task<RegularizationResponseDto?> RequestRegularizationAsync(
+            RegularizationRequestDto dto, string requestedBy)
         {
-           
             var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
-            if (employee == null)
-                return null;
+            if (employee == null) return null;
 
-          
             var pendingCount = await _regularizationRepository.GetPendingCountByEmployeeAsync(dto.EmployeeId);
             if (pendingCount >= MAX_PENDING_REQUESTS)
-                throw new InvalidOperationException($"Cannot have more than {MAX_PENDING_REQUESTS} pending regularization requests");
+                throw new InvalidOperationException(
+                    $"Cannot have more than {MAX_PENDING_REQUESTS} pending regularization requests");
 
-            
             var daysDifference = (DateTime.UtcNow.Date - dto.AttendanceDate.Date).Days;
             if (daysDifference > MAX_DAYS_BACK)
-                throw new InvalidOperationException($"Regularization can only be requested within {MAX_DAYS_BACK} days");
+                throw new InvalidOperationException(
+                    $"Regularization can only be requested within {MAX_DAYS_BACK} days");
 
-           
             var existingRegularization = await _regularizationRepository.GetByEmployeeAndDateAsync(
-                dto.EmployeeId,
-                dto.AttendanceDate);
+                dto.EmployeeId, dto.AttendanceDate);
             if (existingRegularization != null)
-                throw new InvalidOperationException("A pending regularization request already exists for this date");
+                throw new InvalidOperationException(
+                    "A pending regularization request already exists for this date");
 
-            
-            var attendance = await _attendanceRepository.GetByEmployeeAndDateAsync(dto.EmployeeId, dto.AttendanceDate);
+            var attendance = await _attendanceRepository.GetByEmployeeAndDateAsync(
+                dto.EmployeeId, dto.AttendanceDate);
 
             var regularization = new AttendanceRegularization
             {
@@ -68,7 +66,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                 RequestedAt = DateTime.UtcNow
             };
 
-           
             if (!regularization.IsValidTimeRange())
                 throw new InvalidOperationException("Check-out time must be after check-in time");
 
@@ -77,13 +74,10 @@ namespace AttendanceManagementSystem.Services.Implementations
         }
 
         public async Task<RegularizationResponseDto?> ApproveRegularizationAsync(
-            string id,
-            RegularizationApprovalDto dto,
-            string approvedBy)
+            string id, RegularizationApprovalDto dto, string approvedBy)
         {
             var regularization = await _regularizationRepository.GetByIdAsync(id);
-            if (regularization == null)
-                return null;
+            if (regularization == null) return null;
 
             if (!regularization.CanBeApproved())
                 throw new InvalidOperationException("Only pending regularizations can be approved or rejected");
@@ -94,25 +88,21 @@ namespace AttendanceManagementSystem.Services.Implementations
             regularization.RejectionReason = dto.RejectionReason;
             regularization.UpdatedBy = approvedBy;
 
-           
             if (dto.IsApproved)
-            {
                 await UpdateAttendanceFromRegularizationAsync(regularization, approvedBy);
-            }
 
             await _regularizationRepository.UpdateAsync(id, regularization);
             return await MapToResponseDtoAsync(regularization);
         }
 
-        private async Task UpdateAttendanceFromRegularizationAsync(AttendanceRegularization regularization, string updatedBy)
+        private async Task UpdateAttendanceFromRegularizationAsync(
+            AttendanceRegularization regularization, string updatedBy)
         {
             var attendance = await _attendanceRepository.GetByEmployeeAndDateAsync(
-                regularization.EmployeeId,
-                regularization.AttendanceDate);
+                regularization.EmployeeId, regularization.AttendanceDate);
 
             if (attendance == null)
             {
-              
                 attendance = new Attendance
                 {
                     EmployeeId = regularization.EmployeeId,
@@ -125,7 +115,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                     CreatedBy = updatedBy
                 };
 
-            
                 if (attendance.CheckInTime.HasValue && attendance.CheckOutTime.HasValue)
                 {
                     attendance.WorkingHours = (attendance.CheckOutTime.Value - attendance.CheckInTime.Value).TotalHours;
@@ -136,12 +125,10 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             else
             {
-               
                 attendance.CheckInTime = regularization.RequestedCheckIn ?? attendance.CheckInTime;
                 attendance.CheckOutTime = regularization.RequestedCheckOut ?? attendance.CheckOutTime;
                 attendance.UpdatedBy = updatedBy;
 
-              
                 if (attendance.CheckInTime.HasValue && attendance.CheckOutTime.HasValue)
                 {
                     attendance.WorkingHours = (attendance.CheckOutTime.Value - attendance.CheckInTime.Value).TotalHours;
@@ -149,14 +136,9 @@ namespace AttendanceManagementSystem.Services.Implementations
                     attendance.Status = AttendanceStatus.Present;
                 }
 
-                if (!string.IsNullOrEmpty(attendance.Remarks))
-                {
-                    attendance.Remarks += $"; Regularized: {regularization.Reason}";
-                }
-                else
-                {
-                    attendance.Remarks = $"Regularized: {regularization.Reason}";
-                }
+                attendance.Remarks = string.IsNullOrEmpty(attendance.Remarks)
+                    ? $"Regularized: {regularization.Reason}"
+                    : $"{attendance.Remarks}; Regularized: {regularization.Reason}";
 
                 await _attendanceRepository.UpdateAsync(attendance.Id, attendance);
             }
@@ -172,59 +154,53 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var regularizations = await _regularizationRepository.GetByEmployeeIdAsync(employeeId);
             var dtos = new List<RegularizationResponseDto>();
-
-            foreach (var regularization in regularizations)
-            {
-                dtos.Add(await MapToResponseDtoAsync(regularization));
-            }
-
+            foreach (var r in regularizations)
+                dtos.Add(await MapToResponseDtoAsync(r));
             return dtos;
         }
 
-        public async Task<PagedResultDto<RegularizationResponseDto>> GetFilteredAsync(RegularizationFilterDto filter)
+        public async Task<PagedResultDto<RegularizationResponseDto>> GetFilteredAsync(
+            RegularizationFilterDto filter)
         {
             var (items, totalCount) = await _regularizationRepository.GetFilteredAsync(filter);
-
             var dtos = new List<RegularizationResponseDto>();
             foreach (var item in items)
-            {
                 dtos.Add(await MapToResponseDtoAsync(item));
-            }
 
             return new PagedResultDto<RegularizationResponseDto>(
-                dtos,
-                totalCount,
-                filter.PageNumber,
-                filter.PageSize
-            );
+                dtos, totalCount, filter.PageNumber, filter.PageSize);
         }
 
         public async Task<List<RegularizationResponseDto>> GetPendingRegularizationsAsync()
         {
             var regularizations = await _regularizationRepository.GetPendingRegularizationsAsync();
             var dtos = new List<RegularizationResponseDto>();
-
-            foreach (var regularization in regularizations)
-            {
-                dtos.Add(await MapToResponseDtoAsync(regularization));
-            }
-
+            foreach (var r in regularizations)
+                dtos.Add(await MapToResponseDtoAsync(r));
             return dtos;
         }
 
         public async Task<bool> CancelRegularizationAsync(string id, string cancelledBy)
         {
             var regularization = await _regularizationRepository.GetByIdAsync(id);
-            if (regularization == null)
-                return false;
-
-            if (!regularization.CanBeApproved())
-                return false;
+            if (regularization == null) return false;
+            if (!regularization.CanBeApproved()) return false;
 
             regularization.Status = RegularizationStatus.Cancelled;
             regularization.UpdatedBy = cancelledBy;
-
             return await _regularizationRepository.UpdateAsync(id, regularization);
+        }
+
+        // ✅ NEW: Soft-deletes the record by calling repository.DeleteAsync
+        // which sets IsDeleted = true in MongoDB.
+        // Works regardless of the current Status (Pending / Approved / Rejected / Cancelled).
+        public async Task<bool> DeleteRegularizationAsync(string id, string deletedBy)
+        {
+            var regularization = await _regularizationRepository.GetByIdAsync(id);
+            if (regularization == null) return false;
+
+            // Repository.DeleteAsync already sets IsDeleted = true + UpdatedAt
+            return await _regularizationRepository.DeleteAsync(id);
         }
 
         public async Task<int> GetPendingCountByEmployeeAsync(string employeeId)
@@ -232,7 +208,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await _regularizationRepository.GetPendingCountByEmployeeAsync(employeeId);
         }
 
-        private async Task<RegularizationResponseDto> MapToResponseDtoAsync(AttendanceRegularization regularization)
+        private async Task<RegularizationResponseDto> MapToResponseDtoAsync(
+            AttendanceRegularization regularization)
         {
             var employee = await _employeeRepository.GetByIdAsync(regularization.EmployeeId);
             var approver = regularization.ApprovedBy != null

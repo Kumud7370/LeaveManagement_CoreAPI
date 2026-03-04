@@ -36,7 +36,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<AttendanceResponseDto?> CheckInAsync(CheckInDto dto, string userId)
         {
-            // Resolve the actual EmployeeId from the authenticated UserId
+           
             var employeeId = await ResolveEmployeeIdFromUserIdAsync(userId);
             if (string.IsNullOrEmpty(employeeId))
                 return null;
@@ -82,7 +82,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<AttendanceResponseDto?> CheckOutAsync(CheckOutDto dto, string userId)
         {
-            // Resolve the actual EmployeeId from the authenticated UserId
+           
             var employeeId = await ResolveEmployeeIdFromUserIdAsync(userId);
             if (string.IsNullOrEmpty(employeeId))
                 return null;
