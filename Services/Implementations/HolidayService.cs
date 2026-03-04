@@ -28,7 +28,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Description = dto.Description,
                 HolidayType = dto.HolidayType,
                 IsOptional = dto.IsOptional,
-                IsActive = dto.IsActive,                          
+                IsActive = dto.IsActive,
                 ApplicableDepartments = dto.ApplicableDepartments ?? new List<string>(),
                 CreatedBy = createdBy
             };
@@ -96,20 +96,24 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (holiday == null || holiday.IsDeleted)
                 return null;
 
+            // Determine the target name and date after the update
             var targetName = !string.IsNullOrEmpty(dto.HolidayName) ? dto.HolidayName : holiday.HolidayName;
             var targetDate = dto.HolidayDate.HasValue
                 ? DateTime.SpecifyKind(dto.HolidayDate.Value.Date, DateTimeKind.Utc)
                 : holiday.HolidayDate;
 
-            bool nameChanged = targetName != holiday.HolidayName;
+            // Only check for duplicates if name OR date actually changed
+            bool nameChanged = !string.Equals(targetName, holiday.HolidayName, StringComparison.OrdinalIgnoreCase);
             bool dateChanged = targetDate.Date != holiday.HolidayDate.Date;
 
             if (nameChanged || dateChanged)
             {
+                // Pass excludeId so the current record is not counted as a duplicate
                 if (await _holidayRepository.IsHolidayExistsAsync(targetName, targetDate, id))
                     return null;
             }
 
+            // Apply all provided fields
             if (!string.IsNullOrEmpty(dto.HolidayName))
                 holiday.HolidayName = dto.HolidayName;
 
@@ -125,6 +129,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (dto.IsOptional.HasValue)
                 holiday.IsOptional = dto.IsOptional.Value;
 
+            // Always update ApplicableDepartments when provided (including empty list for National)
             if (dto.ApplicableDepartments != null)
                 holiday.ApplicableDepartments = dto.ApplicableDepartments;
 
@@ -134,7 +139,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             holiday.UpdatedBy = updatedBy;
             holiday.UpdatedAt = DateTime.UtcNow;
 
-            var updated = await _holidayRepository.UpdateAsync(id, holiday);
+            var updated = await _holidayRepository.UpdateHolidayFieldsAsync(id, holiday);
             return updated ? MapToResponseDto(holiday) : null;
         }
 
@@ -148,9 +153,7 @@ namespace AttendanceManagementSystem.Services.Implementations
         }
 
         public async Task<bool> IsHolidayOnDateAsync(DateTime date)
-        {
-            return await _holidayRepository.IsHolidayOnDateAsync(date);
-        }
+            => await _holidayRepository.IsHolidayOnDateAsync(date);
 
         public async Task<Dictionary<string, int>> GetHolidayStatisticsByTypeAsync()
         {
@@ -171,7 +174,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             HolidayType = h.HolidayType,
             HolidayTypeName = h.HolidayType.ToString(),
             IsOptional = h.IsOptional,
-            IsActive = h.IsActive,                                
+            IsActive = h.IsActive,
             ApplicableDepartments = h.ApplicableDepartments,
             DepartmentNames = new List<string>(),
             IsUpcoming = h.IsUpcoming(),

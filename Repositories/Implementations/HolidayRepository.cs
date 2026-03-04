@@ -12,6 +12,27 @@ namespace AttendanceManagementSystem.Repositories.Implementations
         public HolidayRepository(IMongoDbContext context) : base(context)
         {
         }
+        public async Task<bool> UpdateHolidayFieldsAsync(string id, Holiday holiday)
+        {
+            var filter = Builders<Holiday>.Filter.And(
+                Builders<Holiday>.Filter.Eq(x => x.Id, id),
+                Builders<Holiday>.Filter.Eq(x => x.IsDeleted, false)
+            );
+
+            var update = Builders<Holiday>.Update
+                .Set(x => x.HolidayName, holiday.HolidayName)
+                .Set(x => x.HolidayDate, holiday.HolidayDate)
+                .Set(x => x.Description, holiday.Description)
+                .Set(x => x.HolidayType, holiday.HolidayType)
+                .Set(x => x.IsOptional, holiday.IsOptional)
+                .Set(x => x.IsActive, holiday.IsActive)
+                .Set(x => x.ApplicableDepartments, holiday.ApplicableDepartments)
+                .Set(x => x.UpdatedBy, holiday.UpdatedBy)
+                .Set(x => x.UpdatedAt, holiday.UpdatedAt);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
 
         public async Task<Holiday?> GetByNameAndDateAsync(string holidayName, DateTime holidayDate)
         {
@@ -31,97 +52,83 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             var startOfDay = holidayDate.Date;
             var endOfDay = startOfDay.AddDays(1);
 
-            var filterBuilder = Builders<Holiday>.Filter;
-            var filter = filterBuilder.And(
-                filterBuilder.Eq(x => x.HolidayName, holidayName),
-                filterBuilder.Gte(x => x.HolidayDate, startOfDay),
-                filterBuilder.Lt(x => x.HolidayDate, endOfDay),
-                filterBuilder.Eq(x => x.IsDeleted, false)
+            var fb = Builders<Holiday>.Filter;
+            var filter = fb.And(
+                fb.Eq(x => x.HolidayName, holidayName),
+                fb.Gte(x => x.HolidayDate, startOfDay),
+                fb.Lt(x => x.HolidayDate, endOfDay),
+                fb.Eq(x => x.IsDeleted, false)
             );
 
             if (!string.IsNullOrEmpty(excludeId))
-            {
-                filter = filterBuilder.And(
-                    filter,
-                    filterBuilder.Ne(x => x.Id, excludeId)
-                );
-            }
+                filter = fb.And(filter, fb.Ne(x => x.Id, excludeId));
 
             return await _collection.Find(filter).AnyAsync();
         }
 
         public async Task<(List<Holiday> Items, int TotalCount)> GetFilteredHolidaysAsync(HolidayFilterDto filter)
         {
-            var filterBuilder = Builders<Holiday>.Filter;
+            var fb = Builders<Holiday>.Filter;
             var filters = new List<FilterDefinition<Holiday>>
             {
-                filterBuilder.Eq(x => x.IsDeleted, false)
+                fb.Eq(x => x.IsDeleted, false)
             };
 
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                var searchFilter = filterBuilder.Or(
-                    filterBuilder.Regex(x => x.HolidayName,
-                        new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
-                    filterBuilder.Regex(x => x.Description,
-                        new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"))
-                );
-                filters.Add(searchFilter);
+                filters.Add(fb.Or(
+                    fb.Regex(x => x.HolidayName, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
+                    fb.Regex(x => x.Description, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i"))
+                ));
             }
 
             if (filter.HolidayType.HasValue)
-                filters.Add(filterBuilder.Eq(x => x.HolidayType, filter.HolidayType.Value));
+                filters.Add(fb.Eq(x => x.HolidayType, filter.HolidayType.Value));
 
             if (filter.IsOptional.HasValue)
-                filters.Add(filterBuilder.Eq(x => x.IsOptional, filter.IsOptional.Value));
+                filters.Add(fb.Eq(x => x.IsOptional, filter.IsOptional.Value));
 
             if (!string.IsNullOrWhiteSpace(filter.DepartmentId))
-                filters.Add(filterBuilder.AnyEq(x => x.ApplicableDepartments, filter.DepartmentId));
+                filters.Add(fb.AnyEq(x => x.ApplicableDepartments, filter.DepartmentId));
+
+            if (filter.IsActive.HasValue)
+                filters.Add(fb.Eq(x => x.IsActive, filter.IsActive.Value));
 
             if (filter.Month.HasValue && filter.Year.HasValue)
             {
                 var monthStart = new DateTime(filter.Year.Value, filter.Month.Value, 1, 0, 0, 0, DateTimeKind.Utc);
                 var monthEnd = monthStart.AddMonths(1).AddTicks(-1);
-                filters.Add(filterBuilder.Gte(x => x.HolidayDate, monthStart));
-                filters.Add(filterBuilder.Lte(x => x.HolidayDate, monthEnd));
+                filters.Add(fb.Gte(x => x.HolidayDate, monthStart));
+                filters.Add(fb.Lte(x => x.HolidayDate, monthEnd));
             }
             else if (filter.Year.HasValue)
             {
                 var yearStart = new DateTime(filter.Year.Value, 1, 1, 0, 0, 0, DateTimeKind.Utc);
                 var yearEnd = new DateTime(filter.Year.Value, 12, 31, 23, 59, 59, DateTimeKind.Utc);
-                filters.Add(filterBuilder.Gte(x => x.HolidayDate, yearStart));
-                filters.Add(filterBuilder.Lte(x => x.HolidayDate, yearEnd));
+                filters.Add(fb.Gte(x => x.HolidayDate, yearStart));
+                filters.Add(fb.Lte(x => x.HolidayDate, yearEnd));
             }
             else
             {
                 if (filter.DateFrom.HasValue)
-                    filters.Add(filterBuilder.Gte(x => x.HolidayDate, filter.DateFrom.Value));
-
+                    filters.Add(fb.Gte(x => x.HolidayDate, filter.DateFrom.Value));
                 if (filter.DateTo.HasValue)
-                    filters.Add(filterBuilder.Lte(x => x.HolidayDate, filter.DateTo.Value));
+                    filters.Add(fb.Lte(x => x.HolidayDate, filter.DateTo.Value));
             }
 
             if (filter.IsUpcoming.HasValue && filter.IsUpcoming.Value)
-                filters.Add(filterBuilder.Gte(x => x.HolidayDate, DateTime.UtcNow.Date));
+                filters.Add(fb.Gte(x => x.HolidayDate, DateTime.UtcNow.Date));
 
-            var combinedFilter = filterBuilder.And(filters);
+            var combinedFilter = fb.And(filters);
             var totalCount = (int)await _collection.CountDocumentsAsync(combinedFilter);
 
-            var sortBuilder = Builders<Holiday>.Sort;
+            var sb = Builders<Holiday>.Sort;
             SortDefinition<Holiday> sort = filter.SortBy.ToLower() switch
             {
-                "holidayname" => filter.SortDescending
-                    ? sortBuilder.Descending(x => x.HolidayName)
-                    : sortBuilder.Ascending(x => x.HolidayName),
-                "holidaytype" => filter.SortDescending
-                    ? sortBuilder.Descending(x => x.HolidayType)
-                    : sortBuilder.Ascending(x => x.HolidayType),
-                "createdat" => filter.SortDescending
-                    ? sortBuilder.Descending(x => x.CreatedAt)
-                    : sortBuilder.Ascending(x => x.CreatedAt),
-                _ => filter.SortDescending
-                    ? sortBuilder.Descending(x => x.HolidayDate)
-                    : sortBuilder.Ascending(x => x.HolidayDate)
+                "holidayname" => filter.SortDescending ? sb.Descending(x => x.HolidayName) : sb.Ascending(x => x.HolidayName),
+                "holidaytype" => filter.SortDescending ? sb.Descending(x => x.HolidayType) : sb.Ascending(x => x.HolidayType),
+                "createdat" => filter.SortDescending ? sb.Descending(x => x.CreatedAt) : sb.Ascending(x => x.CreatedAt),
+                _ => filter.SortDescending ? sb.Descending(x => x.HolidayDate) : sb.Ascending(x => x.HolidayDate)
             };
 
             var items = await _collection
@@ -135,20 +142,16 @@ namespace AttendanceManagementSystem.Repositories.Implementations
         }
 
         public async Task<List<Holiday>> GetHolidaysByDepartmentAsync(string departmentId)
-        {
-            return await _collection
+            => await _collection
                 .Find(x => x.ApplicableDepartments.Contains(departmentId) && !x.IsDeleted)
                 .SortBy(x => x.HolidayDate)
                 .ToListAsync();
-        }
 
         public async Task<List<Holiday>> GetHolidaysByDateRangeAsync(DateTime startDate, DateTime endDate)
-        {
-            return await _collection
+            => await _collection
                 .Find(x => x.HolidayDate >= startDate && x.HolidayDate <= endDate && !x.IsDeleted)
                 .SortBy(x => x.HolidayDate)
                 .ToListAsync();
-        }
 
         public async Task<List<Holiday>> GetUpcomingHolidaysAsync(int count = 10)
         {
@@ -181,28 +184,24 @@ namespace AttendanceManagementSystem.Repositories.Implementations
         }
 
         public async Task<List<Holiday>> GetHolidaysByTypeAsync(HolidayType holidayType)
-        {
-            return await _collection
+            => await _collection
                 .Find(x => x.HolidayType == holidayType && !x.IsDeleted)
                 .SortBy(x => x.HolidayDate)
                 .ToListAsync();
-        }
 
         public async Task<int> GetHolidayCountByTypeAsync(HolidayType holidayType)
-        {
-            return (int)await _collection
+            => (int)await _collection
                 .CountDocumentsAsync(x => x.HolidayType == holidayType && !x.IsDeleted);
-        }
 
         public async Task<bool> IsHolidayOnDateAsync(DateTime date)
         {
             var startOfDay = date.Date;
             var endOfDay = startOfDay.AddDays(1);
-
             return await _collection
                 .Find(x => x.HolidayDate >= startOfDay && x.HolidayDate < endOfDay && !x.IsDeleted)
                 .AnyAsync();
         }
+
         public async Task<bool> SoftDeleteAsync(string id, string deletedBy)
         {
             var update = Builders<Holiday>.Update

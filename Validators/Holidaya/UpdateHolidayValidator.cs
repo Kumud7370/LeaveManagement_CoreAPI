@@ -1,4 +1,5 @@
 ﻿using AttendanceManagementSystem.Models.DTOs.Holiday;
+using AttendanceManagementSystem.Models.Enums;
 using FluentValidation;
 
 namespace AttendanceManagementSystem.Validators.Holiday
@@ -25,9 +26,12 @@ namespace AttendanceManagementSystem.Validators.Holiday
                 .When(x => x.HolidayType.HasValue);
 
             RuleFor(x => x.ApplicableDepartments)
-                .Must(list => list == null || list.Count > 0)
-                    .WithMessage("At least one department must be selected when providing applicable departments")
-                .When(x => x.ApplicableDepartments != null);
+                .Must(list => list != null && list.Count > 0)
+                    .WithMessage("At least one department must be selected for Regional or Optional holidays")
+                .When(x =>
+                    x.ApplicableDepartments != null &&
+                    x.HolidayType.HasValue &&
+                    (x.HolidayType.Value == HolidayType.Regional || x.HolidayType.Value == HolidayType.Optional));
         }
 
         private static bool BeValidDate(DateTime? date) =>
