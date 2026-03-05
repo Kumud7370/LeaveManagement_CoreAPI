@@ -42,7 +42,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             else if (dto.CarriedForward > 0 && !leaveType.IsCarryForward)
             {
-                return null; 
+                return null;
             }
 
             var leaveBalance = new LeaveBalance
@@ -176,7 +176,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                     if (dto.CarriedForward.Value <= leaveType.MaxCarryForwardDays)
                         balance.CarriedForward = dto.CarriedForward.Value;
                     else
-                        return null; 
+                        return null;
                 }
             }
 
@@ -385,6 +385,119 @@ namespace AttendanceManagementSystem.Services.Implementations
             balance.UpdateAvailableBalance();
 
             return await _leaveBalanceRepository.UpdateAsync(id, balance);
+        }
+
+        public async Task<CollectiveAssignmentResultDto> AssignCollectiveLeaveBalanceAsync(
+            CollectiveLeaveBalancedto dto,
+            string createdBy)
+        {
+            var result = new CollectiveAssignmentResultDto();
+
+            // Resolve and validate the leave type once, up front
+            var leaveType = await _leaveTypeRepository.GetByIdAsync(dto.LeaveTypeId!);
+            if (leaveType == null || !leaveType.IsActive)
+            {
+                result.Failed = dto.EmployeeIds.Count;
+                result.FailedEmployeeIds.AddRange(dto.EmployeeIds);
+                return result;
+            }
+
+            // Resolve allocation: use caller-supplied value or fall back to the type default
+            decimal allocation = dto.TotalAllocated ?? leaveType.MaxDaysPerYear;
+
+            // Validate carry-forward rules once before looping employees
+            if (dto.CarriedForward.HasValue && dto.CarriedForward.Value > 0)
+            {
+                if (!leaveType.IsCarryForward || dto.CarriedForward.Value > leaveType.MaxCarryForwardDays)
+                {
+                    result.Failed = dto.EmployeeIds.Count;
+                    result.FailedEmployeeIds.AddRange(dto.EmployeeIds);
+                    return result;
+                }
+            }
+
+            foreach (var employeeId in dto.EmployeeIds)
+            {
+                var employee = await _employeeRepository.GetByIdAsync(employeeId);
+                if (employee == null)
+                {
+                    result.Failed++;
+                    result.FailedEmployeeIds.Add(employeeId);
+                    continue;
+                }
+
+                var alreadyExists = await _leaveBalanceRepository.ExistsAsync(
+                    employeeId, leaveType.Id, dto.Year);
+
+                if (alreadyExists)
+                {
+                    if (dto.SkipExisting)
+                    {
+                        result.Skipped++;
+                        result.SkippedEmployeeIds.Add(employeeId);
+                        continue;
+                    }
+
+                    // Overwrite mode: update TotalAllocated (and CarriedForward if supplied)
+                    var existing = await _leaveBalanceRepository
+                        .GetByEmployeeAndLeaveTypeAsync(employeeId, leaveType.Id, dto.Year);
+
+                    if (existing == null)
+                    {
+                        result.Failed++;
+                        result.FailedEmployeeIds.Add(employeeId);
+                        continue;
+                    }
+
+                    existing.TotalAllocated = allocation;
+
+                    if (dto.CarriedForward.HasValue)
+                        existing.CarriedForward = dto.CarriedForward.Value;
+
+                    existing.UpdateAvailableBalance();
+                    existing.UpdatedBy = createdBy;
+
+                    var updated = await _leaveBalanceRepository.UpdateAsync(existing.Id, existing);
+                    if (updated) result.Succeeded++;
+                    else { result.Failed++; result.FailedEmployeeIds.Add(employeeId); }
+
+                    continue;
+                }
+
+                // New record — auto-calculate carry-forward from previous year when not supplied
+                decimal carryForward = 0;
+                if (dto.CarriedForward.HasValue)
+                {
+                    carryForward = dto.CarriedForward.Value;
+                }
+                else if (leaveType.IsCarryForward && dto.Year > 2000)
+                {
+                    var previousBalance = await _leaveBalanceRepository
+                        .GetByEmployeeAndLeaveTypeAsync(employeeId, leaveType.Id, dto.Year - 1);
+
+                    if (previousBalance != null && previousBalance.Available > 0)
+                        carryForward = Math.Min(previousBalance.Available, leaveType.MaxCarryForwardDays);
+                }
+
+                var newBalance = new LeaveBalance
+                {
+                    EmployeeId = employeeId,
+                    LeaveTypeId = leaveType.Id,
+                    Year = dto.Year,
+                    TotalAllocated = allocation,
+                    CarriedForward = carryForward,
+                    Consumed = 0,
+                    CreatedBy = createdBy
+                };
+
+                newBalance.UpdateAvailableBalance();
+
+                var created = await _leaveBalanceRepository.CreateAsync(newBalance);
+                if (created != null) result.Succeeded++;
+                else { result.Failed++; result.FailedEmployeeIds.Add(employeeId); }
+            }
+
+            return result;
         }
 
         private async Task<LeaveBalanceResponseDto> MapToResponseDtoAsync(LeaveBalance balance)

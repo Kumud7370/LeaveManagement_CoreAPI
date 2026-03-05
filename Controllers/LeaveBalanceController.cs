@@ -201,5 +201,26 @@ namespace AttendanceManagementSystem.Controllers
 
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave balance recalculated successfully"));
         }
+        [HttpPost("assign/collective")]
+        public async Task<ActionResult<ApiResponseDto<CollectiveAssignmentResultDto>>> AssignCollectiveLeaveBalance(
+            [FromBody] CollectiveLeaveBalancedto dto)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<CollectiveAssignmentResultDto>.ErrorResponse("User not authenticated"));
+
+            if (dto.EmployeeIds == null || dto.EmployeeIds.Count == 0)
+                return BadRequest(ApiResponseDto<CollectiveAssignmentResultDto>.ErrorResponse("At least one employee ID is required"));
+
+            if (string.IsNullOrWhiteSpace(dto.LeaveTypeId))
+                return BadRequest(ApiResponseDto<CollectiveAssignmentResultDto>.ErrorResponse("LeaveTypeId is required"));
+
+            var result = await _leaveBalanceService.AssignCollectiveLeaveBalanceAsync(dto, userId);
+
+            var message = $"Collective assignment complete: {result.Succeeded} succeeded, " +
+                          $"{result.Skipped} skipped, {result.Failed} failed.";
+
+            return Ok(ApiResponseDto<CollectiveAssignmentResultDto>.SuccessResponse(result, message));
+        }
     }
 }
