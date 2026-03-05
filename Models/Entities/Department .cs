@@ -3,6 +3,7 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace AttendanceManagementSystem.Models.Entities
 {
+    [BsonIgnoreExtraElements]
     public class Department : BaseEntity
     {
         [BsonElement("departmentId")]
