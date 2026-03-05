@@ -27,7 +27,7 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("overtimeHours")]
         public double? OvertimeHours { get; set; }
 
-        [BsonElement("status")]  // ADD THIS LINE
+        [BsonElement("status")]  
         [JsonConverter(typeof(JsonStringEnumConverter))]
         public AttendanceStatus Status { get; set; }
 

@@ -193,8 +193,8 @@ namespace AttendanceManagementSystem.Repositories.Implementations
 
         public async Task<List<Attendance>> GetByDepartmentAsync(string departmentId, DateTime startDate, DateTime endDate)
         {
-            // Note: This requires joining with Employee collection
-            // For now, returning empty list - will be implemented in service layer
+          
+           
             return new List<Attendance>();
         }
 
@@ -225,16 +225,16 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             var startOfDay = date.Date;
             var endOfDay = startOfDay.AddDays(1);
 
-            // Get employees who have attendance records for the date
+            
             var presentEmployeeIds = await _collection
                 .Find(x => x.AttendanceDate >= startOfDay && x.AttendanceDate < endOfDay && !x.IsDeleted)
                 .Project(x => x.EmployeeId)
                 .ToListAsync();
 
-            // Find employees without attendance records
+           
             var absentEmployeeIds = allEmployeeIds.Except(presentEmployeeIds).ToList();
 
-            // Create attendance records for absent employees
+          
             var absentRecords = absentEmployeeIds.Select(employeeId => new Attendance
             {
                 EmployeeId = employeeId,
