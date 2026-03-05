@@ -164,7 +164,33 @@ namespace AttendanceManagementSystem.Services.Implementations
             var employee = await _employeeRepository.GetByEmailAsync(request.Email);
             if (employee == null)
             {
-                throw new Exception("No employee record found with this email. Please contact HR to create your employee profile first.");
+                var newEmployee = new Employee
+                {
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    Email = request.Email,
+                    EmployeeCode = "EMP-" + DateTime.UtcNow.Ticks.ToString().Substring(10), 
+                    EmployeeStatus = Models.Enums.EmployeeStatus.Active,
+                    EmploymentType = Models.Enums.EmploymentType.FullTime,
+                    Gender = Models.Enums.Gender.Male,
+                    DateOfJoining = DateTime.UtcNow,
+                    DateOfBirth = DateTime.UtcNow.AddYears(-18), 
+                    CreatedAt = DateTime.UtcNow,
+                    IsDeleted = false
+                };
+                try
+                {
+                    employee = await _employeeRepository.CreateAsync(newEmployee);
+                    Console.WriteLine($"[REGISTER] Employee created: {employee?.Id ?? "NULL"}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[REGISTER] EXCEPTION: {ex.GetType().Name}: {ex.Message}");
+                    throw;
+                }
+
+                if (employee == null)
+                    throw new Exception("Failed to create employee record during registration.");
             }
 
             // Get default Employee role
@@ -222,7 +248,8 @@ namespace AttendanceManagementSystem.Services.Implementations
                     Email = createdUser.Email,
                     FirstName = createdUser.FirstName,
                     LastName = createdUser.LastName,
-                    Roles = roleNames
+                    Roles = roleNames,
+                    EmployeeId = employee.Id
                 }
             };
         }

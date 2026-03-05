@@ -16,6 +16,7 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly IAuditLogRepository _auditLogRepository;
         private readonly IEmailService _emailService;
         private readonly ILogger<AdminManagementService> _logger;
+        private readonly IEmployeeRepository _employeeRepository;
 
         private readonly Dictionary<string, List<string>> _roleHierarchy = new()
         {
@@ -31,7 +32,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             IRoleRepository roleRepository,
             IAuditLogRepository auditLogRepository,
             IEmailService emailService,
-            ILogger<AdminManagementService> logger)
+            ILogger<AdminManagementService> logger,
+            IEmployeeRepository employeeRepository)
         {
             _invitationRepository = invitationRepository;
             _userRepository = userRepository;
@@ -39,6 +41,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             _auditLogRepository = auditLogRepository;
             _emailService = emailService;
             _logger = logger;
+            _employeeRepository = employeeRepository;
         }
 
         public async Task<InvitationResponseDto?> SendInvitationAsync(
@@ -319,6 +322,27 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return false;
                 }
 
+                // Create employee record first
+                var newEmployee = new Employee
+                {
+                    FirstName = dto.FirstName,
+                    LastName = dto.LastName,
+                    Email = invitation.Email,
+                    EmployeeCode = "EMP-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(),
+                    EmployeeStatus = Models.Enums.EmployeeStatus.Active,
+                    EmploymentType = Models.Enums.EmploymentType.FullTime,
+                    DateOfJoining = DateTime.UtcNow,
+                    DateOfBirth = new DateTime(1990, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    PhoneNumber = string.Empty,
+                    DepartmentId = string.Empty,
+                    DesignationId = string.Empty,
+                    Address = new Models.ValueObjects.Address(),
+                    CreatedBy = string.Empty,
+                    CreatedAt = DateTime.UtcNow,
+                    IsDeleted = false
+                };
+                var createdEmployee = await _employeeRepository.CreateAsync(newEmployee);
+
                 var newUser = new User
                 {
                     Username = dto.Username,
@@ -327,10 +351,15 @@ namespace AttendanceManagementSystem.Services.Implementations
                     FirstName = dto.FirstName,
                     LastName = dto.LastName,
                     IsActive = true,
-                    RoleIds = new List<string> { role.Id }
+                    RoleIds = new List<string> { role.Id },
+                    EmployeeId = createdEmployee.Id  
                 };
 
-                await _userRepository.CreateAsync(newUser);
+                var createdUser = await _userRepository.CreateAsync(newUser);
+
+                // Link employee back to user
+                createdEmployee.UserId = createdUser.Id;
+                await _employeeRepository.UpdateAsync(createdEmployee.Id, createdEmployee);
 
                 invitation.Status = "Accepted";
                 invitation.AcceptedAt = DateTime.UtcNow;

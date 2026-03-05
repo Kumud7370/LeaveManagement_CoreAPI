@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 
 namespace AttendanceManagementSystem.Models.Entities
 {
+    [BsonIgnoreExtraElements]
     public class Employee : BaseEntity
     {
         [BsonElement("employeeCode")]
@@ -37,7 +38,8 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime DateOfBirth { get; set; }
 
-        [BsonRepresentation(BsonType.String)]  
+        [BsonElement("gender")]
+        [BsonRepresentation(BsonType.String)]
         public Gender Gender { get; set; }
 
         [BsonElement("address")]
@@ -60,10 +62,12 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? DateOfLeaving { get; set; }
 
-        [BsonRepresentation(BsonType.String)]  
+        [BsonElement("employmentType")]
+        [BsonRepresentation(BsonType.String)]
         public EmploymentType EmploymentType { get; set; }
 
-        [BsonRepresentation(BsonType.String)]  
+        [BsonElement("employeeStatus")]
+        [BsonRepresentation(BsonType.String)]
         public EmployeeStatus EmployeeStatus { get; set; }
 
         [BsonElement("profileImageUrl")]
