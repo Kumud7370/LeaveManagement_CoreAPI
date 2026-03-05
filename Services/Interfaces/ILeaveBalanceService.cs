@@ -22,5 +22,6 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<bool> InitializeBalanceForEmployeeAsync(string employeeId, int year, string createdBy);
         Task<Dictionary<string, int>> BulkInitializeBalancesAsync(BulkInitializeBalanceDto dto, string createdBy);
         Task<bool> RecalculateBalanceAsync(string id);
+        Task<CollectiveAssignmentResultDto> AssignCollectiveLeaveBalanceAsync(CollectiveLeaveBalancedto dto, string createdBy);
     }
 }
