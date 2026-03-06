@@ -21,7 +21,9 @@ namespace AttendanceManagementSystem.Controllers
 
         [HttpPost]
         [HttpPost]
-        public async Task<ActionResult<ApiResponseDto<WfhRequestResponseDto>>> CreateWfhRequest([FromBody] CreateWfhRequestDto dto)
+        [HttpPost]
+        public async Task<ActionResult<ApiResponseDto<WfhRequestResponseDto>>> CreateWfhRequest(
+    [FromBody] CreateWfhRequestDto dto)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
@@ -31,7 +33,18 @@ namespace AttendanceManagementSystem.Controllers
             if (string.IsNullOrEmpty(userEmail))
                 return Unauthorized(ApiResponseDto<WfhRequestResponseDto>.ErrorResponse("User email not found"));
 
-            var result = await _wfhRequestService.CreateWfhRequestByUserAsync(userId, userEmail, dto);
+            WfhRequestResponseDto? result;
+
+            // If admin provided a specific employeeId, use that directly
+            if (!string.IsNullOrEmpty(dto.EmployeeId))
+            {
+                result = await _wfhRequestService.CreateWfhRequestAsync(dto.EmployeeId, dto, userId);
+            }
+            else
+            {
+                // Otherwise create for the logged-in user (employee self-service)
+                result = await _wfhRequestService.CreateWfhRequestByUserAsync(userId, userEmail, dto);
+            }
 
             if (result == null)
                 return BadRequest(ApiResponseDto<WfhRequestResponseDto>.ErrorResponse(

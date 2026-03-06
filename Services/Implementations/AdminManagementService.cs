@@ -75,6 +75,22 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return null;
                 }
 
+                if (dto.Role == "Employee")
+                {
+                    var existingEmployee = await _employeeRepository.GetByEmailAsync(dto.Email);
+                    if (existingEmployee == null)
+                    {
+                        _logger.LogWarning($"No employee record found for {dto.Email}. Create the employee entry first before sending an Employee invitation.");
+                        return null;
+                    }
+
+                    if (!string.IsNullOrEmpty(existingEmployee.UserId))
+                    {
+                        _logger.LogWarning($"Employee {dto.Email} is already linked to a user account.");
+                        return null;
+                    }
+                }
+
                 var existingInvitation = await _invitationRepository.GetByEmailAsync(dto.Email);
                 if (existingInvitation != null && existingInvitation.Status == "Pending")
                 {
@@ -100,7 +116,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 await _emailService.SendInvitationEmailAsync(
                     dto.Email,
-                    dto.Email.Split('@')[0], 
+                    dto.Email.Split('@')[0],
                     token,
                     dto.Role,
                     inviterName
@@ -322,44 +338,72 @@ namespace AttendanceManagementSystem.Services.Implementations
                     return false;
                 }
 
-                // Create employee record first
-                var newEmployee = new Employee
+                Employee? employee = null;
+
+                if (invitation.InvitedRole == "Employee")
                 {
-                    FirstName = dto.FirstName,
-                    LastName = dto.LastName,
-                    Email = invitation.Email,
-                    EmployeeCode = "EMP-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(),
-                    EmployeeStatus = Models.Enums.EmployeeStatus.Active,
-                    EmploymentType = Models.Enums.EmploymentType.FullTime,
-                    DateOfJoining = DateTime.UtcNow,
-                    DateOfBirth = new DateTime(1990, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                    PhoneNumber = string.Empty,
-                    DepartmentId = string.Empty,
-                    DesignationId = string.Empty,
-                    Address = new Models.ValueObjects.Address(),
-                    CreatedBy = string.Empty,
-                    CreatedAt = DateTime.UtcNow,
-                    IsDeleted = false
-                };
-                var createdEmployee = await _employeeRepository.CreateAsync(newEmployee);
+                    // Employee flow: must link to the pre-existing employee record created by admin.
+                    // Never create a new one — that would cause the duplicate entry problem.
+                    employee = await _employeeRepository.GetByEmailAsync(invitation.Email);
+                    if (employee == null)
+                    {
+                        _logger.LogWarning($"No employee record found for {invitation.Email}. Cannot complete Employee registration.");
+                        return false;
+                    }
+                    if (!string.IsNullOrEmpty(employee.UserId))
+                    {
+                        _logger.LogWarning($"Employee {invitation.Email} is already linked to a user account.");
+                        return false;
+                    }
+                }
+                else
+                {
+                    // Admin/Manager flow: create a minimal employee record for them since
+                    // they are also staff members but weren't pre-created in the employee form.
+                    employee = await _employeeRepository.GetByEmailAsync(invitation.Email);
+                    if (employee == null)
+                    {
+                        var newEmployee = new Employee
+                        {
+                            FirstName = dto.FirstName,
+                            LastName = dto.LastName,
+                            Email = invitation.Email,
+                            EmployeeCode = "EMP-" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString(),
+                            EmployeeStatus = Models.Enums.EmployeeStatus.Active,
+                            EmploymentType = Models.Enums.EmploymentType.FullTime,
+                            DateOfJoining = DateTime.UtcNow,
+                            DateOfBirth = new DateTime(1990, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                            PhoneNumber = string.Empty,
+                            DepartmentId = string.Empty,
+                            DesignationId = string.Empty,
+                            Address = new Models.ValueObjects.Address(),
+                            CreatedBy = invitation.InvitedBy,
+                            CreatedAt = DateTime.UtcNow,
+                            IsDeleted = false
+                        };
+                        employee = await _employeeRepository.CreateAsync(newEmployee);
+                    }
+                }
 
                 var newUser = new User
                 {
                     Username = dto.Username,
                     Email = invitation.Email,
                     PasswordHash = PasswordHelper.HashPassword(dto.Password),
-                    FirstName = dto.FirstName,
-                    LastName = dto.LastName,
+                    FirstName = !string.IsNullOrWhiteSpace(dto.FirstName) ? dto.FirstName : employee.FirstName,
+                    LastName = !string.IsNullOrWhiteSpace(dto.LastName) ? dto.LastName : employee.LastName,
                     IsActive = true,
                     RoleIds = new List<string> { role.Id },
-                    EmployeeId = createdEmployee.Id  
+                    EmployeeId = employee.Id
                 };
 
                 var createdUser = await _userRepository.CreateAsync(newUser);
 
-                // Link employee back to user
-                createdEmployee.UserId = createdUser.Id;
-                await _employeeRepository.UpdateAsync(createdEmployee.Id, createdEmployee);
+                // Link the employee record to the new user account
+                employee.UserId = createdUser.Id;
+                if (!string.IsNullOrWhiteSpace(dto.FirstName)) employee.FirstName = dto.FirstName;
+                if (!string.IsNullOrWhiteSpace(dto.LastName)) employee.LastName = dto.LastName;
+                await _employeeRepository.UpdateAsync(employee.Id, employee);
 
                 invitation.Status = "Accepted";
                 invitation.AcceptedAt = DateTime.UtcNow;
@@ -367,7 +411,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 await _emailService.SendWelcomeEmailAsync(
                     newUser.Email,
-                    newUser.Username,
+                    $"{newUser.FirstName} {newUser.LastName}",
                     invitation.InvitedRole
                 );
 
