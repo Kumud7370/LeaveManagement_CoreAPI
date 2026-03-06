@@ -69,9 +69,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             var employeeShiftDtos = new List<EmployeeShiftResponseDto>();
             foreach (var employeeShift in items)
-            {
                 employeeShiftDtos.Add(await MapToResponseDtoAsync(employeeShift));
-            }
 
             return new PagedResultDto<EmployeeShiftResponseDto>(
                 employeeShiftDtos,
@@ -84,14 +82,10 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<List<EmployeeShiftResponseDto>> GetEmployeeShiftsByEmployeeIdAsync(string employeeId)
         {
             var employeeShifts = await _employeeShiftRepository.GetByEmployeeIdAsync(employeeId);
-            var employeeShiftDtos = new List<EmployeeShiftResponseDto>();
-
-            foreach (var employeeShift in employeeShifts)
-            {
-                employeeShiftDtos.Add(await MapToResponseDtoAsync(employeeShift));
-            }
-
-            return employeeShiftDtos;
+            var dtos = new List<EmployeeShiftResponseDto>();
+            foreach (var es in employeeShifts)
+                dtos.Add(await MapToResponseDtoAsync(es));
+            return dtos;
         }
 
         public async Task<EmployeeShiftResponseDto?> GetCurrentShiftForEmployeeAsync(string employeeId)
@@ -103,27 +97,19 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<List<EmployeeShiftResponseDto>> GetPendingShiftChangesAsync()
         {
             var employeeShifts = await _employeeShiftRepository.GetPendingShiftChangesAsync();
-            var employeeShiftDtos = new List<EmployeeShiftResponseDto>();
-
-            foreach (var employeeShift in employeeShifts)
-            {
-                employeeShiftDtos.Add(await MapToResponseDtoAsync(employeeShift));
-            }
-
-            return employeeShiftDtos;
+            var dtos = new List<EmployeeShiftResponseDto>();
+            foreach (var es in employeeShifts)
+                dtos.Add(await MapToResponseDtoAsync(es));
+            return dtos;
         }
 
         public async Task<List<EmployeeShiftResponseDto>> GetUpcomingShiftChangesAsync(int days = 7)
         {
             var employeeShifts = await _employeeShiftRepository.GetUpcomingShiftChangesAsync(days);
-            var employeeShiftDtos = new List<EmployeeShiftResponseDto>();
-
-            foreach (var employeeShift in employeeShifts)
-            {
-                employeeShiftDtos.Add(await MapToResponseDtoAsync(employeeShift));
-            }
-
-            return employeeShiftDtos;
+            var dtos = new List<EmployeeShiftResponseDto>();
+            foreach (var es in employeeShifts)
+                dtos.Add(await MapToResponseDtoAsync(es));
+            return dtos;
         }
 
         public async Task<EmployeeShiftResponseDto?> UpdateEmployeeShiftAsync(string id, UpdateEmployeeShiftDto dto, string updatedBy)
@@ -183,6 +169,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (employeeShift == null || employeeShift.Status != ShiftChangeStatus.Pending)
                 return false;
 
+            // End any currently active open-ended approved shift for this employee
             var overlappingShifts = await _employeeShiftRepository.GetByEmployeeIdAsync(employeeShift.EmployeeId);
             foreach (var overlap in overlappingShifts)
             {
@@ -234,13 +221,11 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<Dictionary<string, int>> GetShiftChangeStatisticsByStatusAsync()
         {
             var statistics = new Dictionary<string, int>();
-
             foreach (ShiftChangeStatus status in Enum.GetValues(typeof(ShiftChangeStatus)))
             {
                 var shifts = await _employeeShiftRepository.GetByStatusAsync(status);
                 statistics[status.ToString()] = shifts.Count;
             }
-
             return statistics;
         }
 
@@ -252,6 +237,85 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             return !await _employeeShiftRepository.HasOverlappingShiftAssignmentAsync(employeeId, effectiveFrom, effectiveTo, excludeId);
         }
+
+        // ─── EMPLOYEE SELF-SERVICE ──────────────────────────────────────────────
+
+        public async Task<List<EmployeeShiftResponseDto>> GetMyShiftsAsync(string userId)
+        {
+            // Resolve userId → employee record
+            var employee = await _employeeRepository.GetByUserIdAsync(userId);
+            if (employee == null)
+                return new List<EmployeeShiftResponseDto>();
+
+            var shifts = await _employeeShiftRepository.GetByEmployeeIdAsync(employee.Id);
+            var dtos = new List<EmployeeShiftResponseDto>();
+            foreach (var es in shifts)
+                dtos.Add(await MapToResponseDtoAsync(es));
+            return dtos;
+        }
+
+        public async Task<bool> EmployeeApproveShiftAsync(string id, string userId)
+        {
+            // Resolve userId → employee record
+            var employee = await _employeeRepository.GetByUserIdAsync(userId);
+            if (employee == null)
+                return false;
+
+            var employeeShift = await _employeeShiftRepository.GetByIdAsync(id);
+
+            // Verify the assignment belongs to this employee and is still pending
+            if (employeeShift == null ||
+                employeeShift.EmployeeId != employee.Id ||
+                employeeShift.Status != ShiftChangeStatus.Pending)
+                return false;
+
+            // End any currently active open-ended approved shift for this employee
+            var allShifts = await _employeeShiftRepository.GetByEmployeeIdAsync(employee.Id);
+            foreach (var existing in allShifts)
+            {
+                if (existing.Id != id &&
+                    existing.Status == ShiftChangeStatus.Approved &&
+                    existing.IsActive &&
+                    !existing.EffectiveTo.HasValue)
+                {
+                    existing.EffectiveTo = employeeShift.EffectiveFrom.AddDays(-1);
+                    await _employeeShiftRepository.UpdateAsync(existing.Id, existing);
+                }
+            }
+
+            employeeShift.Status = ShiftChangeStatus.Approved;
+            employeeShift.ApprovedBy = employee.Id;
+            employeeShift.ApprovedDate = DateTime.UtcNow;
+            employeeShift.UpdatedBy = employee.Id;
+
+            return await _employeeShiftRepository.UpdateAsync(id, employeeShift);
+        }
+
+        public async Task<bool> EmployeeRejectShiftAsync(string id, string userId, string rejectionReason)
+        {
+            // Resolve userId → employee record
+            var employee = await _employeeRepository.GetByUserIdAsync(userId);
+            if (employee == null)
+                return false;
+
+            var employeeShift = await _employeeShiftRepository.GetByIdAsync(id);
+
+            // Verify the assignment belongs to this employee and is still pending
+            if (employeeShift == null ||
+                employeeShift.EmployeeId != employee.Id ||
+                employeeShift.Status != ShiftChangeStatus.Pending)
+                return false;
+
+            employeeShift.Status = ShiftChangeStatus.Rejected;
+            employeeShift.RejectedBy = employee.Id;
+            employeeShift.RejectedDate = DateTime.UtcNow;
+            employeeShift.RejectionReason = rejectionReason;
+            employeeShift.UpdatedBy = employee.Id;
+
+            return await _employeeShiftRepository.UpdateAsync(id, employeeShift);
+        }
+
+        // ─── Mapping ────────────────────────────────────────────────────────────
 
         private async Task<EmployeeShiftResponseDto> MapToResponseDtoAsync(EmployeeShift employeeShift)
         {

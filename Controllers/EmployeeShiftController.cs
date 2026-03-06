@@ -178,6 +178,61 @@ namespace AttendanceManagementSystem.Controllers
 
             return Ok(ApiResponseDto<bool>.SuccessResponse(result));
         }
+
+        // ─── EMPLOYEE SELF-SERVICE ENDPOINTS ──────────────────────────────────────
+
+        /// <summary>
+        /// Employee views their own shift assignments (filtered by their userId → employeeId).
+        /// </summary>
+        [HttpGet("my-shifts")]
+        public async Task<ActionResult<ApiResponseDto<List<EmployeeShiftResponseDto>>>> GetMyShifts()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<List<EmployeeShiftResponseDto>>.ErrorResponse("User not authenticated"));
+
+            var result = await _employeeShiftService.GetMyShiftsAsync(userId);
+            return Ok(ApiResponseDto<List<EmployeeShiftResponseDto>>.SuccessResponse(result));
+        }
+
+        /// <summary>
+        /// Employee confirms (approves) a shift assigned to them by the admin.
+        /// </summary>
+        [HttpPatch("{id}/employee-approve")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> EmployeeApproveShift(string id)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
+
+            var result = await _employeeShiftService.EmployeeApproveShiftAsync(id, userId);
+
+            if (!result)
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to confirm shift. Assignment may not be in pending status or does not belong to you."));
+
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Shift confirmed successfully"));
+        }
+
+        /// <summary>
+        /// Employee rejects a shift assigned to them by the admin (reason required).
+        /// </summary>
+        [HttpPatch("{id}/employee-reject")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> EmployeeRejectShift(string id, [FromBody] RejectShiftChangeRequestDto request)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
+
+            if (string.IsNullOrWhiteSpace(request.RejectionReason))
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Rejection reason is required"));
+
+            var result = await _employeeShiftService.EmployeeRejectShiftAsync(id, userId, request.RejectionReason);
+
+            if (!result)
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to reject shift. Assignment may not be in pending status or does not belong to you."));
+
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Shift rejected successfully. Admin will be notified."));
+        }
     }
 
     public class RejectShiftChangeRequestDto
