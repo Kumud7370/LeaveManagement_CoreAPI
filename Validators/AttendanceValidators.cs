@@ -7,16 +7,17 @@ namespace AttendanceManagementSystem.Validators.Attendance
     {
         public CheckInValidator()
         {
-            RuleFor(x => x.EmployeeId)
-                .NotEmpty().WithMessage("Employee ID is required");
+            // EmployeeId is sent by the frontend but the backend resolves the real
+            // employee from the JWT claim. We keep the field in the DTO for
+            // compatibility but do NOT enforce NotEmpty here — the controller
+            // extracts userId from the token and ignores the DTO value.
+            RuleFor(x => x.CheckInMethod)
+                .IsInEnum().WithMessage("Invalid check-in method");
 
             RuleFor(x => x.CheckInTime)
                 .NotEmpty().WithMessage("Check-in time is required")
-             
-                .Must(BeValidCheckInTime).WithMessage("Check-in time cannot be in the future");
-
-            RuleFor(x => x.CheckInMethod)
-                .IsInEnum().WithMessage("Invalid check-in method");
+                .Must(BeValidCheckInTime)
+                .WithMessage("Check-in time cannot be more than 5 minutes in the future");
 
             RuleFor(x => x.CheckInLocation)
                 .SetValidator(new LocationValidator()!)
@@ -25,9 +26,9 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
         private bool BeValidCheckInTime(DateTime checkInTime)
         {
-            
-            
-            return checkInTime <= DateTime.UtcNow.AddSeconds(60);
+            // Allow up to 5 minutes in the future to absorb clock skew between
+            // the browser and the server.
+            return checkInTime <= DateTime.UtcNow.AddMinutes(5);
         }
     }
 
@@ -35,16 +36,13 @@ namespace AttendanceManagementSystem.Validators.Attendance
     {
         public CheckOutValidator()
         {
-            RuleFor(x => x.EmployeeId)
-                .NotEmpty().WithMessage("Employee ID is required");
+            RuleFor(x => x.CheckOutMethod)
+                .IsInEnum().WithMessage("Invalid check-out method");
 
             RuleFor(x => x.CheckOutTime)
                 .NotEmpty().WithMessage("Check-out time is required")
-              
-                .Must(BeValidCheckOutTime).WithMessage("Check-out time cannot be in the future");
-
-            RuleFor(x => x.CheckOutMethod)
-                .IsInEnum().WithMessage("Invalid check-out method");
+                .Must(BeValidCheckOutTime)
+                .WithMessage("Check-out time cannot be more than 5 minutes in the future");
 
             RuleFor(x => x.CheckOutLocation)
                 .SetValidator(new LocationValidator()!)
@@ -53,7 +51,7 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
         private bool BeValidCheckOutTime(DateTime checkOutTime)
         {
-            return checkOutTime <= DateTime.UtcNow.AddSeconds(60);
+            return checkOutTime <= DateTime.UtcNow.AddMinutes(5);
         }
     }
 
@@ -62,10 +60,12 @@ namespace AttendanceManagementSystem.Validators.Attendance
         public LocationValidator()
         {
             RuleFor(x => x.Latitude)
-                .InclusiveBetween(-90, 90).WithMessage("Latitude must be between -90 and 90");
+                .InclusiveBetween(-90, 90)
+                .WithMessage("Latitude must be between -90 and 90");
 
             RuleFor(x => x.Longitude)
-                .InclusiveBetween(-180, 180).WithMessage("Longitude must be between -180 and 180");
+                .InclusiveBetween(-180, 180)
+                .WithMessage("Longitude must be between -180 and 180");
         }
     }
 
@@ -101,15 +101,13 @@ namespace AttendanceManagementSystem.Validators.Attendance
 
         private bool BeValidTime(DateTime? time)
         {
-           
-            return !time.HasValue || time.Value <= DateTime.UtcNow.AddSeconds(60);
+            return !time.HasValue || time.Value <= DateTime.UtcNow.AddMinutes(5);
         }
 
         private bool BeAfterCheckIn(ManualAttendanceDto dto, DateTime? checkOutTime)
         {
             if (!checkOutTime.HasValue || !dto.CheckInTime.HasValue)
                 return true;
-
             return checkOutTime.Value > dto.CheckInTime.Value;
         }
     }
@@ -142,7 +140,6 @@ namespace AttendanceManagementSystem.Validators.Attendance
         {
             if (!startDate.HasValue || !dto.EndDate.HasValue)
                 return true;
-
             return startDate.Value <= dto.EndDate.Value;
         }
     }
