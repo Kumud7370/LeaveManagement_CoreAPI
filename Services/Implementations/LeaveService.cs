@@ -214,8 +214,22 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<bool> DeleteLeaveAsync(string id, string deletedBy)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending)
+            if (leave == null)
                 return false;
+
+            // If approved, restore the leave balance first
+            if (leave.LeaveStatus == LeaveStatus.Approved)
+            {
+                var year = leave.StartDate.Year;
+                var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
+                    leave.EmployeeId, leave.LeaveTypeId, year);
+
+                if (leaveBalance != null)
+                {
+                    leaveBalance.RestoreLeave(leave.TotalDays);
+                    await _leaveBalanceRepository.UpdateAsync(leaveBalance.Id, leaveBalance);
+                }
+            }
 
             leave.UpdatedBy = deletedBy;
             leave.DeletedAt = DateTime.UtcNow;
