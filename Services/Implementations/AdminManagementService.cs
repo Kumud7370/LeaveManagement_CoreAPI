@@ -52,52 +52,56 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             try
             {
+                // 1. Validate inviter exists
                 var inviter = await _userRepository.GetByIdAsync(inviterId);
                 if (inviter == null)
                 {
-                    _logger.LogWarning($"Inviter with ID {inviterId} not found");
+                    _logger.LogWarning("Inviter with ID {InviterId} not found", inviterId);
                     return null;
                 }
 
+                // 2. Check inviter has permission to invite this role
                 var inviterRoles = await _roleRepository.GetRolesByIdsAsync(inviter.RoleIds);
                 var inviterRoleNames = inviterRoles.Select(r => r.Name).ToList();
 
                 if (!CanInviteRole(inviterRoleNames, dto.Role))
                 {
-                    _logger.LogWarning($"User {inviterName} cannot invite role {dto.Role}");
+                    _logger.LogWarning("User {InviterName} with roles [{Roles}] cannot invite role {TargetRole}",
+                        inviterName, string.Join(", ", inviterRoleNames), dto.Role);
                     return null;
                 }
 
+                // 3. Check no user account already exists with this email
                 var existingUser = await _userRepository.GetByEmailAsync(dto.Email);
                 if (existingUser != null)
                 {
-                    _logger.LogWarning($"User with email {dto.Email} already exists");
+                    _logger.LogWarning("User with email {Email} already has an active account", dto.Email);
                     return null;
                 }
 
+                // 4. If the employee already exists and is already linked to a user, block the invite
+                //    (Previously this also blocked if NO employee record existed for Employee role —
+                //     that check has been removed so invitations can be sent freely. The employee
+                //     record will be created (or linked) at accept-time instead.)
                 if (dto.Role == "Employee")
                 {
                     var existingEmployee = await _employeeRepository.GetByEmailAsync(dto.Email);
-                    if (existingEmployee == null)
+                    if (existingEmployee != null && !string.IsNullOrEmpty(existingEmployee.UserId))
                     {
-                        _logger.LogWarning($"No employee record found for {dto.Email}. Create the employee entry first before sending an Employee invitation.");
-                        return null;
-                    }
-
-                    if (!string.IsNullOrEmpty(existingEmployee.UserId))
-                    {
-                        _logger.LogWarning($"Employee {dto.Email} is already linked to a user account.");
+                        _logger.LogWarning("Employee {Email} is already linked to a user account", dto.Email);
                         return null;
                     }
                 }
 
+                // 5. Block if a pending invitation already exists for this email
                 var existingInvitation = await _invitationRepository.GetByEmailAsync(dto.Email);
                 if (existingInvitation != null && existingInvitation.Status == "Pending")
                 {
-                    _logger.LogWarning($"Pending invitation already exists for {dto.Email}");
+                    _logger.LogWarning("A pending invitation already exists for {Email}", dto.Email);
                     return null;
                 }
 
+                // 6. Create and persist the invitation
                 var token = GenerateSecureToken();
 
                 var invitation = new AdminInvitation
@@ -114,6 +118,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 await _invitationRepository.CreateAsync(invitation);
 
+                // 7. Send the invitation email
                 await _emailService.SendInvitationEmailAsync(
                     dto.Email,
                     dto.Email.Split('@')[0],
@@ -122,6 +127,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                     inviterName
                 );
 
+                // 8. Audit log
                 await LogAuditAsync(
                     inviterId,
                     inviterName,
@@ -136,7 +142,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error sending invitation");
+                _logger.LogError(ex, "Error sending invitation to {Email}", dto.Email);
                 return null;
             }
         }
@@ -195,7 +201,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error updating invitation {invitationId}");
+                _logger.LogError(ex, "Error updating invitation {InvitationId}", invitationId);
                 return null;
             }
         }
@@ -231,7 +237,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error revoking invitation {invitationId}");
+                _logger.LogError(ex, "Error revoking invitation {InvitationId}", invitationId);
                 return false;
             }
         }
@@ -263,7 +269,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error deleting invitation {invitationId}");
+                _logger.LogError(ex, "Error deleting invitation {InvitationId}", invitationId);
                 return false;
             }
         }
@@ -312,7 +318,7 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 if (invitation == null || invitation.Status != "Pending")
                 {
-                    _logger.LogWarning($"Invalid or non-pending invitation token");
+                    _logger.LogWarning("Invalid or non-pending invitation token");
                     return false;
                 }
 
@@ -320,21 +326,21 @@ namespace AttendanceManagementSystem.Services.Implementations
                 {
                     invitation.Status = "Expired";
                     await _invitationRepository.UpdateAsync(invitation.Id, invitation);
-                    _logger.LogWarning($"Invitation token expired");
+                    _logger.LogWarning("Invitation token expired for {Email}", invitation.Email);
                     return false;
                 }
 
                 var existingUser = await _userRepository.GetByUsernameAsync(dto.Username);
                 if (existingUser != null)
                 {
-                    _logger.LogWarning($"Username {dto.Username} already exists");
+                    _logger.LogWarning("Username {Username} already exists", dto.Username);
                     return false;
                 }
 
                 var role = await _roleRepository.GetByNameAsync(invitation.InvitedRole);
                 if (role == null)
                 {
-                    _logger.LogWarning($"Role {invitation.InvitedRole} not found");
+                    _logger.LogWarning("Role {Role} not found", invitation.InvitedRole);
                     return false;
                 }
 
@@ -342,25 +348,39 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 if (invitation.InvitedRole == "Employee")
                 {
-                    // Employee flow: must link to the pre-existing employee record created by admin.
-                    // Never create a new one — that would cause the duplicate entry problem.
+                    // Employee role: ONLY link to a pre-existing employee record created by an admin.
+                    // Never auto-create one — the admin is responsible for creating the employee
+                    // profile first. The invitation send no longer requires it to exist upfront,
+                    // but it MUST exist by the time the user accepts.
                     employee = await _employeeRepository.GetByEmailAsync(invitation.Email);
+
                     if (employee == null)
                     {
-                        _logger.LogWarning($"No employee record found for {invitation.Email}. Cannot complete Employee registration.");
+                        _logger.LogWarning(
+                            "No employee record found for {Email}. An admin must create the employee profile before the invitation can be accepted.",
+                            invitation.Email);
                         return false;
                     }
+
                     if (!string.IsNullOrEmpty(employee.UserId))
                     {
-                        _logger.LogWarning($"Employee {invitation.Email} is already linked to a user account.");
+                        _logger.LogWarning("Employee {Email} is already linked to an existing user account", invitation.Email);
                         return false;
                     }
                 }
                 else
                 {
-                    // Admin/Manager flow: create a minimal employee record for them since
-                    // they are also staff members but weren't pre-created in the employee form.
+                    // Admin / Manager role: look for an existing employee record first.
+                    // If none exists, create a minimal one — these roles are staff members
+                    // but are not pre-created through the employee form.
                     employee = await _employeeRepository.GetByEmailAsync(invitation.Email);
+
+                    if (employee != null && !string.IsNullOrEmpty(employee.UserId))
+                    {
+                        _logger.LogWarning("Employee {Email} is already linked to an existing user account", invitation.Email);
+                        return false;
+                    }
+
                     if (employee == null)
                     {
                         var newEmployee = new Employee
@@ -382,9 +402,13 @@ namespace AttendanceManagementSystem.Services.Implementations
                             IsDeleted = false
                         };
                         employee = await _employeeRepository.CreateAsync(newEmployee);
+                        _logger.LogInformation("Created new employee record for {Email} (role: {Role})",
+                            invitation.Email, invitation.InvitedRole);
                     }
                 }
 
+                // Create the user account.
+                // EmployeeId is only set when a real employee record exists (always true here).
                 var newUser = new User
                 {
                     Username = dto.Username,
@@ -399,22 +423,25 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 var createdUser = await _userRepository.CreateAsync(newUser);
 
-                // Link the employee record to the new user account
+                // Link the employee record back to the new user
                 employee.UserId = createdUser.Id;
                 if (!string.IsNullOrWhiteSpace(dto.FirstName)) employee.FirstName = dto.FirstName;
                 if (!string.IsNullOrWhiteSpace(dto.LastName)) employee.LastName = dto.LastName;
                 await _employeeRepository.UpdateAsync(employee.Id, employee);
 
+                // Mark invitation as accepted
                 invitation.Status = "Accepted";
                 invitation.AcceptedAt = DateTime.UtcNow;
                 await _invitationRepository.UpdateAsync(invitation.Id, invitation);
 
+                // Send welcome email
                 await _emailService.SendWelcomeEmailAsync(
                     newUser.Email,
                     $"{newUser.FirstName} {newUser.LastName}",
                     invitation.InvitedRole
                 );
 
+                // Audit log
                 await LogAuditAsync(
                     newUser.Id,
                     newUser.Username,
