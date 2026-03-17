@@ -26,6 +26,9 @@ namespace AttendanceManagementSystem.Models.Entities
 
         [BsonElement("roleIds")]
         public List<string> RoleIds { get; set; } = new List<string>();
+        
+        [BsonElement("departmentId")]
+        public string? DepartmentId { get; set; }
 
         [BsonElement("refreshToken")]
         public string? RefreshToken { get; set; }

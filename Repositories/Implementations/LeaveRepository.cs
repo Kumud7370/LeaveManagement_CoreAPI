@@ -188,7 +188,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             {
                 filterBuilder.Eq(x => x.EmployeeId, employeeId),
                 filterBuilder.Eq(x => x.IsDeleted, false),
-                filterBuilder.In(x => x.LeaveStatus, new[] { LeaveStatus.Pending, LeaveStatus.Approved }),
+                filterBuilder.In(x => x.LeaveStatus, new[] { LeaveStatus.Pending, LeaveStatus.Pending, LeaveStatus.AdminApproved, LeaveStatus.NayabApproved,  LeaveStatus.FullyApproved}),
                 filterBuilder.Or(
                     filterBuilder.And(
                         filterBuilder.Gte(x => x.StartDate, startDate),
@@ -222,7 +222,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             var filter = Builders<Leave>.Filter.And(
                 Builders<Leave>.Filter.Eq(x => x.EmployeeId, employeeId),
                 Builders<Leave>.Filter.Eq(x => x.LeaveTypeId, leaveTypeId),
-                Builders<Leave>.Filter.Eq(x => x.LeaveStatus, LeaveStatus.Approved),
+                Builders<Leave>.Filter.Eq(x => x.LeaveStatus, LeaveStatus.FullyApproved),
                 Builders<Leave>.Filter.Eq(x => x.IsDeleted, false),
                 Builders<Leave>.Filter.Or(
                     Builders<Leave>.Filter.And(
@@ -246,7 +246,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             var futureDate = today.AddDays(days);
 
             var filter = Builders<Leave>.Filter.And(
-                Builders<Leave>.Filter.Eq(x => x.LeaveStatus, LeaveStatus.Approved),
+                Builders<Leave>.Filter.Eq(x => x.LeaveStatus, LeaveStatus.FullyApproved),
                 Builders<Leave>.Filter.Eq(x => x.IsDeleted, false),
                 Builders<Leave>.Filter.Gte(x => x.StartDate, today),
                 Builders<Leave>.Filter.Lte(x => x.StartDate, futureDate)

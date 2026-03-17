@@ -100,6 +100,17 @@ namespace AttendanceManagementSystem.Controllers
             });
         }
 
+        [HttpGet("by-department/{departmentId}")]
+        public async Task<IActionResult> GetByDepartment(string departmentId)
+        {
+            var result = await _designationService.GetDesignationsByDepartmentAsync(departmentId);
+            return Ok(new
+            {
+                message = "Designations for department retrieved successfully",
+                data = result
+            });
+        }
+
         [HttpGet("level/{level}")]
         public async Task<IActionResult> GetDesignationsByLevel(int level)
         {

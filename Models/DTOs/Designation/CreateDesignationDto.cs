@@ -2,6 +2,7 @@
 {
     public class CreateDesignationDto
     {
+        public string? DepartmentId { get; set; }
         public string DesignationCode { get; set; } = string.Empty;
         public string DesignationName { get; set; } = string.Empty;
         public string? Description { get; set; }

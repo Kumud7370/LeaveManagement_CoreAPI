@@ -11,5 +11,6 @@ namespace AttendanceManagementSystem.Repositories.Interfaces
         Task<List<Designation>> GetByLevelAsync(int level);
         Task<List<Designation>> GetActiveDesignationsAsync();
         Task<int> GetEmployeeCountByDesignationAsync(string designationId);
+        Task<List<Designation>> GetByDepartmentIdAsync(string departmentId);
     }
 }

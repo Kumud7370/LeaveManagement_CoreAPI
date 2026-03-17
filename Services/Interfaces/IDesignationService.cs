@@ -13,6 +13,7 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<List<DesignationResponseDto>> GetDesignationsByLevelAsync(int level);
         Task<DesignationResponseDto?> UpdateDesignationAsync(string id, UpdateDesignationDto dto, string updatedBy);
         Task<bool> DeleteDesignationAsync(string id, string deletedBy);
+        Task<List<DesignationResponseDto>> GetDesignationsByDepartmentAsync(string departmentId);
         Task<bool> ToggleDesignationStatusAsync(string id, string updatedBy);
         Task<Dictionary<int, int>> GetDesignationStatisticsByLevelAsync();
     }

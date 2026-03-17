@@ -101,6 +101,15 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             return (items, (int)totalCount);
         }
 
+        public async Task<List<Designation>> GetByDepartmentIdAsync(string departmentId)
+        {
+            return await _collection
+                .Find(x => x.DepartmentId == departmentId && x.IsActive && !x.IsDeleted)
+                .SortBy(x => x.Level)
+                .ThenBy(x => x.DesignationName)
+                .ToListAsync();
+        }
+
         public async Task<List<Designation>> GetByLevelAsync(int level)
         {
             return await _collection

@@ -12,15 +12,18 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly IEmployeeRepository _employeeRepository;
         private readonly IDepartmentRepository _departmentRepository;
         private readonly IDesignationRepository _designationRepository;
+        private readonly IAssignmentHistoryRepository _assignmentHistoryRepository;
 
         public EmployeeService(
             IEmployeeRepository employeeRepository,
             IDepartmentRepository departmentRepository,
-            IDesignationRepository designationRepository)
+            IDesignationRepository designationRepository,
+            IAssignmentHistoryRepository assignmentHistoryRepository)
         {
             _employeeRepository = employeeRepository;
             _departmentRepository = departmentRepository;
             _designationRepository = designationRepository;
+            _assignmentHistoryRepository = assignmentHistoryRepository;
         }
 
         public async Task<EmployeeResponseDto?> CreateEmployeeAsync(CreateEmployeeDto dto, string createdBy)
@@ -270,6 +273,88 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
 
             return BuildDto(employee, departmentName, designationName);
+        }
+
+        public async Task<EmployeeResponseDto?> ReassignEmployeeAsync(
+    string id, ReassignEmployeeDto dto, string changedBy)
+        {
+            var employee = await _employeeRepository.GetByIdAsync(id);
+            if (employee == null) return null;
+
+            // Write history record before changing
+            var history = new EmployeeAssignmentHistory
+            {
+                EmployeeId = id,
+                FromDepartmentId = employee.DepartmentId,
+                ToDepartmentId = dto.ToDepartmentId,
+                FromDesignationId = employee.DesignationId,
+                ToDesignationId = dto.ToDesignationId,
+                ChangedBy = changedBy,
+                ChangedAt = DateTime.UtcNow,
+                Reason = dto.Reason
+            };
+            await _assignmentHistoryRepository.CreateAsync(history);
+
+            // Update employee current values
+            employee.DepartmentId = dto.ToDepartmentId;
+            employee.DesignationId = dto.ToDesignationId;
+            employee.UpdatedBy = changedBy;
+
+            var updated = await _employeeRepository.UpdateAsync(id, employee);
+            return updated ? await MapToResponseDtoAsync(employee) : null;
+        }
+
+        public async Task<List<AssignmentHistoryResponseDto>> GetAssignmentHistoryAsync(string employeeId)
+        {
+            var history = await _assignmentHistoryRepository.GetByEmployeeIdAsync(employeeId);
+            var result = new List<AssignmentHistoryResponseDto>();
+
+            foreach (var h in history)
+            {
+                // Resolve names for display
+                string? fromDeptName = null, toDeptName = null;
+                string? fromDesigName = null, toDesigName = null;
+                string? changedByName = null;
+
+                if (!string.IsNullOrEmpty(h.FromDepartmentId) && Guid.TryParse(h.FromDepartmentId, out var fromDeptGuid))
+                {
+                    var dept = await _departmentRepository.GetByDepartmentIdAsync(fromDeptGuid);
+                    fromDeptName = dept?.DepartmentName;
+                }
+                if (Guid.TryParse(h.ToDepartmentId, out var toDeptGuid))
+                {
+                    var dept = await _departmentRepository.GetByDepartmentIdAsync(toDeptGuid);
+                    toDeptName = dept?.DepartmentName;
+                }
+                if (!string.IsNullOrEmpty(h.FromDesignationId))
+                {
+                    var desig = await _designationRepository.GetByIdAsync(h.FromDesignationId);
+                    fromDesigName = desig?.DesignationName;
+                }
+                if (!string.IsNullOrEmpty(h.ToDesignationId))
+                {
+                    var desig = await _designationRepository.GetByIdAsync(h.ToDesignationId);
+                    toDesigName = desig?.DesignationName;
+                }
+
+                result.Add(new AssignmentHistoryResponseDto
+                {
+                    Id = h.Id,
+                    EmployeeId = h.EmployeeId,
+                    FromDepartmentId = h.FromDepartmentId,
+                    FromDepartmentName = fromDeptName,
+                    ToDepartmentId = h.ToDepartmentId,
+                    ToDepartmentName = toDeptName ?? string.Empty,
+                    FromDesignationId = h.FromDesignationId,
+                    FromDesignationName = fromDesigName,
+                    ToDesignationId = h.ToDesignationId,
+                    ToDesignationName = toDesigName ?? string.Empty,
+                    ChangedBy = h.ChangedBy,
+                    ChangedAt = h.ChangedAt,
+                    Reason = h.Reason
+                });
+            }
+            return result;
         }
         private EmployeeResponseDto MapToResponseDto(
             Employee employee,
