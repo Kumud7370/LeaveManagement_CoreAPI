@@ -1,9 +1,11 @@
-﻿using System.Security.Claims;
-using AttendanceManagementSystem.Models.DTOs.Common;
+﻿using AttendanceManagementSystem.Models.DTOs.Common;
 using AttendanceManagementSystem.Models.DTOs.Leave;
+using AttendanceManagementSystem.Repositories.Implementations;
+using AttendanceManagementSystem.Repositories.Interfaces;
 using AttendanceManagementSystem.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AttendanceManagementSystem.Controllers
 {
@@ -13,10 +15,14 @@ namespace AttendanceManagementSystem.Controllers
     public class LeaveController : ControllerBase
     {
         private readonly ILeaveService _leaveService;
+        private readonly IUserRepository _userRepository;
 
-        public LeaveController(ILeaveService leaveService)
+        public LeaveController(
+        ILeaveService leaveService,
+        IUserRepository userRepository)                 
         {
             _leaveService = leaveService;
+            _userRepository = userRepository;               
         }
 
         [HttpPost]
@@ -52,10 +58,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.SuccessResponse(result));
         }
 
-        /// <summary>
-        /// Employee-facing endpoint. Resolves the correct Employee from the JWT
-        /// email claim server-side — the client never needs to know the Employee ObjectId.
-        /// </summary>
         [HttpPost("my-leaves")]
         public async Task<ActionResult<ApiResponseDto<PagedResultDto<LeaveResponseDto>>>> GetMyLeaves([FromBody] LeaveFilterDto filter)
         {
@@ -120,34 +122,73 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave deleted successfully"));
         }
 
-        [HttpPatch("{id}/approve")]
-        public async Task<ActionResult<ApiResponseDto<bool>>> ApproveLeave(string id)
+        [HttpPatch("{id}/admin-approve")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> AdminApprove(string id)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
 
-            var result = await _leaveService.ApproveLeaveAsync(id, userId);
+            var result = await _leaveService.AdminApproveLeaveAsync(id, userId);
 
             if (!result)
-                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to approve leave. Leave may not be in pending status"));
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse(
+                    "Failed to approve leave. Leave must be in Pending status."));
 
-            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave approved successfully"));
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave approved by Admin. Forwarded to Nayab Tehsildar."));
+        }
+
+        [HttpPatch("{id}/nayab-approve")]
+        [Authorize(Roles = "NayabTehsildar")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> NayabApprove(string id)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
+
+            var result = await _leaveService.NayabApproveLeaveAsync(id, userId);
+
+            if (!result)
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse(
+                    "Failed to approve leave. Leave must be in AdminApproved status."));
+
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave approved by Nayab Tehsildar. Forwarded to Tehsildar."));
+        }
+
+        [HttpPatch("{id}/tehsildar-approve")]
+        [Authorize(Roles = "Tehsildar")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> TehsildarApprove(string id)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
+
+            var result = await _leaveService.TehsildarApproveLeaveAsync(id, userId);
+
+            if (!result)
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse(
+                    "Failed to approve leave. Leave must be in NayabApproved status or insufficient balance."));
+
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave fully approved by Tehsildar."));
         }
 
         [HttpPatch("{id}/reject")]
-        public async Task<ActionResult<ApiResponseDto<bool>>> RejectLeave(string id, [FromBody] RejectLeaveRequestDto request)
+        [Authorize(Roles = "Admin,NayabTehsildar,Tehsildar")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> Reject(
+            string id, [FromBody] RejectLeaveRequestDto dto)
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
 
-            var result = await _leaveService.RejectLeaveAsync(id, userId, request.RejectionReason);
+            var result = await _leaveService.RejectLeaveAsync(id, userId, dto.RejectionReason);
 
             if (!result)
-                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to reject leave. Leave may not be in pending status"));
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse(
+                    "Failed to reject leave. Leave may already be fully approved or cancelled."));
 
-            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave rejected successfully"));
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave rejected successfully."));
         }
 
         [HttpPatch("{id}/cancel")]
@@ -177,6 +218,27 @@ namespace AttendanceManagementSystem.Controllers
         {
             var result = await _leaveService.GetRemainingLeaveDaysAsync(employeeId, leaveTypeId, year);
             return Ok(ApiResponseDto<int>.SuccessResponse(result));
+        }
+
+        [HttpPost("department-leaves")]
+        [Authorize(Roles = "HR,Admin,Tehsildar,NayabTehsildar")]
+        public async Task<ActionResult<ApiResponseDto<PagedResultDto<LeaveResponseDto>>>> GetDepartmentLeaves(
+         [FromBody] LeaveFilterDto filter)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+
+            if (roles.Contains("HR"))
+            {
+                var hrUser = await _userRepository.GetByIdAsync(userId!); 
+                if (hrUser == null || string.IsNullOrEmpty(hrUser.DepartmentId))
+                    return Forbid();
+
+                filter.DepartmentId = hrUser.DepartmentId;
+            }
+
+            var result = await _leaveService.GetDepartmentLeavesAsync(filter);
+            return Ok(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.SuccessResponse(result));
         }
 
         [HttpPost("validate")]

@@ -20,9 +20,6 @@ namespace AttendanceManagementSystem.Controllers
             _employeeService = employeeService;
         }
 
-        // ─────────────────────────────────────────────
-        //  WRITE OPERATIONS  (Admin only)
-        // ─────────────────────────────────────────────
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
@@ -95,10 +92,6 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Employee status updated successfully"));
         }
 
-        // ─────────────────────────────────────────────
-        //  READ OPERATIONS  (Admin, Tehsildar, NayabTehsildar)
-        // ─────────────────────────────────────────────
-
         [HttpGet("{id}")]
         [Authorize(Roles = "Admin,Tehsildar,NayabTehsildar")]
         public async Task<ActionResult<ApiResponseDto<EmployeeResponseDto>>> GetEmployeeById(string id)
@@ -151,6 +144,32 @@ namespace AttendanceManagementSystem.Controllers
         {
             var result = await _employeeService.GetEmployeesByDepartmentAsync(departmentId);
             return Ok(ApiResponseDto<List<EmployeeResponseDto>>.SuccessResponse(result));
+        }
+
+        [HttpPost("{id}/reassign")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponseDto<EmployeeResponseDto>>> ReassignEmployee(
+    string id, [FromBody] ReassignEmployeeDto dto)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<EmployeeResponseDto>.ErrorResponse("User not authenticated"));
+
+            var result = await _employeeService.ReassignEmployeeAsync(id, dto, userId);
+
+            if (result == null)
+                return BadRequest(ApiResponseDto<EmployeeResponseDto>.ErrorResponse(
+                    "Failed to reassign. Employee, department, or designation not found."));
+
+            return Ok(ApiResponseDto<EmployeeResponseDto>.SuccessResponse(result, "Employee reassigned successfully"));
+        }
+
+        [HttpGet("{id}/assignment-history")]
+        [Authorize(Roles = "Admin,Tehsildar,NayabTehsildar")]
+        public async Task<ActionResult<ApiResponseDto<List<AssignmentHistoryResponseDto>>>> GetAssignmentHistory(string id)
+        {
+            var result = await _employeeService.GetAssignmentHistoryAsync(id);
+            return Ok(ApiResponseDto<List<AssignmentHistoryResponseDto>>.SuccessResponse(result));
         }
 
         [HttpGet("manager/{managerId}")]

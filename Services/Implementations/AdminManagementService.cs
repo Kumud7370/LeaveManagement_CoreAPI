@@ -19,7 +19,8 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             "Tehsildar",
             "NayabTehsildar",
-            "Employee"
+            "Employee",
+            "HR"
         };
 
         public AdminManagementService(
@@ -104,6 +105,15 @@ namespace AttendanceManagementSystem.Services.Implementations
                     resolvedEmployeeId = employee.Id;
                 }
 
+                if (dto.Role == "HR")
+                {
+                    if (string.IsNullOrWhiteSpace(dto.DepartmentId))
+                    {
+                        _logger.LogWarning("CreateUser: DepartmentId is required when creating an HR user");
+                        return null;
+                    }
+                }
+
                 // 6. Create the user
                 var newUser = new User
                 {
@@ -115,6 +125,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                     RoleIds = new List<string> { role.Id },
                     IsActive = true,
                     EmployeeId = resolvedEmployeeId,
+                    DepartmentId = dto.Role == "HR" ? dto.DepartmentId : null,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -375,6 +386,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Roles = roleNames,
                 IsActive = user.IsActive,
                 EmployeeId = user.EmployeeId,
+                DepartmentId = user.DepartmentId,
                 CreatedAt = user.CreatedAt
             };
         }

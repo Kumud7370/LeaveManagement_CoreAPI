@@ -7,6 +7,7 @@ namespace AttendanceManagementSystem.Models.DTOs.Leave
         public string? EmployeeId { get; set; }
         public string? LeaveTypeId { get; set; }
         public LeaveStatus? LeaveStatus { get; set; }
+        public string? DepartmentId { get; set; }
         public DateTime? StartDateFrom { get; set; }
         public DateTime? StartDateTo { get; set; }
         public DateTime? EndDateFrom { get; set; }
@@ -14,6 +15,7 @@ namespace AttendanceManagementSystem.Models.DTOs.Leave
         public DateTime? AppliedDateFrom { get; set; }
         public DateTime? AppliedDateTo { get; set; }
         public bool? IsEmergencyLeave { get; set; }
+        public List<string>? EmployeeIds { get; set; }
         public string? SearchTerm { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 10;

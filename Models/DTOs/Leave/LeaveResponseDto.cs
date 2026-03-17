@@ -19,6 +19,12 @@ namespace AttendanceManagementSystem.Models.DTOs.Leave
         public LeaveStatus LeaveStatus { get; set; }
         public string LeaveStatusName { get; set; } = string.Empty;
         public DateTime AppliedDate { get; set; }
+       public string? AdminApprovedBy { get; set; }
+        public DateTime? AdminApprovedDate { get; set; }
+        public string? NayabApprovedBy { get; set; }
+        public DateTime? NayabApprovedDate { get; set; }
+        public string? TehsildarApprovedBy { get; set; }
+        public DateTime? TehsildarApprovedDate { get; set; }
         public string? ApprovedBy { get; set; }
         public string? ApprovedByName { get; set; }
         public DateTime? ApprovedDate { get; set; }

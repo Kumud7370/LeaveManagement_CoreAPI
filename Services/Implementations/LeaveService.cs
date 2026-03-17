@@ -218,7 +218,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 return false;
 
             // If approved, restore the leave balance first
-            if (leave.LeaveStatus == LeaveStatus.Approved)
+            if (leave.LeaveStatus == LeaveStatus.FullyApproved)
             {
                 var year = leave.StartDate.Year;
                 var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
@@ -237,33 +237,66 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await _leaveRepository.DeleteAsync(id);
         }
 
-        public async Task<bool> ApproveLeaveAsync(string id, string approvedBy)
+        public async Task<bool> AdminApproveLeaveAsync(string id, string adminUserId)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
             if (leave == null || leave.LeaveStatus != LeaveStatus.Pending)
                 return false;
 
-            var year = leave.StartDate.Year;
-            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
-                leave.EmployeeId, leave.LeaveTypeId, year);
+            leave.LeaveStatus = LeaveStatus.AdminApproved;
+            leave.AdminApprovedBy = adminUserId;
+            leave.AdminApprovedDate = DateTime.UtcNow;
+            leave.UpdatedBy = adminUserId;
+            return await _leaveRepository.UpdateAsync(id, leave);
+        }
 
+        public async Task<bool> NayabApproveLeaveAsync(string id, string nayabUserId)
+        {
+            var leave = await _leaveRepository.GetByIdAsync(id);
+            if (leave == null || leave.LeaveStatus != LeaveStatus.AdminApproved)
+                return false;
+
+            leave.LeaveStatus = LeaveStatus.NayabApproved;
+            leave.NayabApprovedBy = nayabUserId;
+            leave.NayabApprovedDate = DateTime.UtcNow;
+            leave.UpdatedBy = nayabUserId;
+            return await _leaveRepository.UpdateAsync(id, leave);
+        }
+
+        public async Task<bool> TehsildarApproveLeaveAsync(string id, string tehsildarUserId)
+        {
+            var leave = await _leaveRepository.GetByIdAsync(id);
+            if (leave == null || leave.LeaveStatus != LeaveStatus.NayabApproved)
+                return false;
+
+            // Balance is only consumed at final approval
+            var leaveBalance = await _leaveBalanceRepository
+                .GetByEmployeeAndLeaveTypeAsync(leave.EmployeeId, leave.LeaveTypeId, leave.StartDate.Year);
             if (leaveBalance == null || !leaveBalance.ConsumeLeave(leave.TotalDays))
                 return false;
 
             await _leaveBalanceRepository.UpdateAsync(leaveBalance.Id, leaveBalance);
 
-            leave.LeaveStatus = LeaveStatus.Approved;
-            leave.ApprovedBy = approvedBy;
-            leave.ApprovedDate = DateTime.UtcNow;
-            leave.UpdatedBy = approvedBy;
-
+            leave.LeaveStatus = LeaveStatus.FullyApproved;
+            leave.TehsildarApprovedBy = tehsildarUserId;
+            leave.TehsildarApprovedDate = DateTime.UtcNow;
+            leave.UpdatedBy = tehsildarUserId;
             return await _leaveRepository.UpdateAsync(id, leave);
         }
 
+        // Reject — any approver can reject at their stage
         public async Task<bool> RejectLeaveAsync(string id, string rejectedBy, string rejectionReason)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending)
+
+            var rejectableStatuses = new[]
+            {
+        LeaveStatus.Pending,
+        LeaveStatus.AdminApproved,
+        LeaveStatus.NayabApproved
+    };
+
+            if (leave == null || !rejectableStatuses.Contains(leave.LeaveStatus))
                 return false;
 
             leave.LeaveStatus = LeaveStatus.Rejected;
@@ -281,7 +314,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (leave == null || !leave.CanBeCancelled())
                 return false;
 
-            if (leave.LeaveStatus == LeaveStatus.Approved)
+            if (leave.LeaveStatus == LeaveStatus.FullyApproved)
             {
                 var year = leave.StartDate.Year;
                 var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
@@ -347,6 +380,35 @@ namespace AttendanceManagementSystem.Services.Implementations
             return leaveBalance.HasSufficientBalance(totalDays);
         }
 
+        public async Task<PagedResultDto<LeaveResponseDto>> GetDepartmentLeavesAsync(LeaveFilterDto filter)
+        {
+            // If DepartmentId is set, first get all employee IDs in that department
+            if (!string.IsNullOrEmpty(filter.DepartmentId))
+            {
+                var employees = await _employeeRepository.GetEmployeesByDepartmentAsync(filter.DepartmentId);
+                var employeeIds = employees.Select(e => e.Id).ToList();
+
+                // If no employees in dept, return empty
+                if (!employeeIds.Any())
+                    return new PagedResultDto<LeaveResponseDto>(
+                        new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+
+                if (!string.IsNullOrEmpty(filter.EmployeeId))
+                {
+                    if (!employeeIds.Contains(filter.EmployeeId))
+                        return new PagedResultDto<LeaveResponseDto>(
+                            new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+                }
+                else
+                {
+                 
+                    filter.EmployeeIds = employeeIds;
+                }
+            }
+
+            return await GetFilteredLeavesAsync(filter);
+        }
+
         private async Task<LeaveResponseDto> MapToResponseDtoAsync(Leave leave)
         {
             var employee = await _employeeRepository.GetByIdAsync(leave.EmployeeId);
@@ -387,6 +449,12 @@ namespace AttendanceManagementSystem.Services.Implementations
                 LeaveStatus = leave.LeaveStatus,
                 LeaveStatusName = leave.LeaveStatus.ToString(),
                 AppliedDate = leave.AppliedDate,
+                AdminApprovedBy = leave.AdminApprovedBy,
+                AdminApprovedDate = leave.AdminApprovedDate,
+                NayabApprovedBy = leave.NayabApprovedBy,
+                NayabApprovedDate = leave.NayabApprovedDate,
+                TehsildarApprovedBy = leave.TehsildarApprovedBy,
+                TehsildarApprovedDate = leave.TehsildarApprovedDate,
                 ApprovedBy = leave.ApprovedBy,
                 ApprovedByName = approvedByName,
                 ApprovedDate = leave.ApprovedDate,

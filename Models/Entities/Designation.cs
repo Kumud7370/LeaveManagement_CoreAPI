@@ -20,6 +20,8 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("isActive")]
         public bool IsActive { get; set; } = true;
 
+        public string? DepartmentId { get; set; }
+
         [BsonElement("createdBy")]
         public string CreatedBy { get; set; } = string.Empty;
 

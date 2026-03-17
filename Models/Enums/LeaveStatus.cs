@@ -2,10 +2,11 @@
 {
     public enum LeaveStatus
     {
-        Pending = 1,
-        Approved = 2,
-        Rejected = 3,
-        Cancelled = 4,
-        Withdrawn = 5
+        Pending = 0,
+        AdminApproved = 1,   
+        NayabApproved = 2,   
+        FullyApproved = 3,   
+        Rejected = 4,
+        Cancelled = 5
     }
 }

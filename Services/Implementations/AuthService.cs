@@ -22,9 +22,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             _jwtHelper = jwtHelper;
         }
 
-        // ─────────────────────────────────────────────
         //  LOGIN
-        // ─────────────────────────────────────────────
         public async Task<LoginResponseDto?> LoginAsync(LoginRequestDto request)
         {
             var user = await _userRepository.GetByUsernameAsync(request.Username);
@@ -38,9 +36,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await BuildLoginResponseAsync(user);
         }
 
-        // ─────────────────────────────────────────────
         //  REFRESH TOKEN
-        // ─────────────────────────────────────────────
         public async Task<LoginResponseDto?> RefreshTokenAsync(RefreshTokenRequestDto request)
         {
             var user = await _userRepository.GetByRefreshTokenAsync(request.RefreshToken);
@@ -51,9 +47,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await BuildLoginResponseAsync(user);
         }
 
-        // ─────────────────────────────────────────────
         //  CHANGE PASSWORD  (available to ALL roles)
-        // ─────────────────────────────────────────────
         public async Task<bool> ChangePasswordAsync(string userId, ChangePasswordRequestDto request)
         {
             var user = await _userRepository.GetByIdAsync(userId);
@@ -71,9 +65,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await _userRepository.UpdateAsync(userId, user);
         }
 
-        // ─────────────────────────────────────────────
         //  LOGOUT
-        // ─────────────────────────────────────────────
         public async Task<bool> LogoutAsync(string userId)
         {
             var user = await _userRepository.GetByIdAsync(userId);
@@ -84,9 +76,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             return true;
         }
 
-        // ─────────────────────────────────────────────
         //  PRIVATE HELPERS
-        // ─────────────────────────────────────────────
         private async Task<LoginResponseDto> BuildLoginResponseAsync(User user)
         {
             var roles = await _roleRepository.GetRolesByIdsAsync(user.RoleIds);
@@ -113,7 +103,8 @@ namespace AttendanceManagementSystem.Services.Implementations
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     Roles = roleNames,
-                    EmployeeId = user.EmployeeId
+                    EmployeeId = user.EmployeeId,
+                    DepartmentId = user.DepartmentId
                 }
             };
         }

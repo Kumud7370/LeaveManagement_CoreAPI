@@ -27,6 +27,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Description = dto.Description,
                 Level = dto.Level,
                 IsActive = dto.IsActive,
+                DepartmentId = dto.DepartmentId,
                 CreatedBy = createdBy
             };
 
@@ -90,6 +91,15 @@ namespace AttendanceManagementSystem.Services.Implementations
             return designationDtos;
         }
 
+        public async Task<List<DesignationResponseDto>> GetDesignationsByDepartmentAsync(string departmentId)
+        {
+            var designations = await _designationRepository.GetByDepartmentIdAsync(departmentId);
+            var result = new List<DesignationResponseDto>();
+            foreach (var d in designations)
+                result.Add(await MapToResponseDtoAsync(d));
+            return result;
+        }
+
         public async Task<DesignationResponseDto?> UpdateDesignationAsync(string id, UpdateDesignationDto dto, string updatedBy)
         {
             var designation = await _designationRepository.GetByIdAsync(id);
@@ -116,6 +126,9 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             if (dto.IsActive.HasValue)
                 designation.IsActive = dto.IsActive.Value;
+
+            if (dto.DepartmentId != null)
+                designation.DepartmentId = dto.DepartmentId;
 
             designation.UpdatedBy = updatedBy;
 
@@ -173,6 +186,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Level = designation.Level,
                 IsActive = designation.IsActive,
                 EmployeeCount = employeeCount,
+                DepartmentId = designation.DepartmentId,
                 CreatedAt = designation.CreatedAt,
                 UpdatedAt = designation.UpdatedAt
             };

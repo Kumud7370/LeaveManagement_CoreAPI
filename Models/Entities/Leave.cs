@@ -39,6 +39,12 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("approvedDate")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? ApprovedDate { get; set; }
+        public string? AdminApprovedBy { get; set; }
+        public DateTime? AdminApprovedDate { get; set; }
+        public string? NayabApprovedBy { get; set; }
+        public DateTime? NayabApprovedDate { get; set; }
+        public string? TehsildarApprovedBy { get; set; }
+        public DateTime? TehsildarApprovedDate { get; set; }
 
         [BsonElement("rejectedBy")]
         public string? RejectedBy { get; set; }
@@ -80,7 +86,7 @@ namespace AttendanceManagementSystem.Models.Entities
 
         public bool IsActiveLeave()
         {
-            return LeaveStatus == LeaveStatus.Approved &&
+            return LeaveStatus == LeaveStatus.FullyApproved &&
                    StartDate <= DateTime.UtcNow.Date &&
                    EndDate >= DateTime.UtcNow.Date;
         }
@@ -88,7 +94,9 @@ namespace AttendanceManagementSystem.Models.Entities
         public bool CanBeCancelled()
         {
             return LeaveStatus == LeaveStatus.Pending ||
-                   (LeaveStatus == LeaveStatus.Approved && StartDate > DateTime.UtcNow.Date);
+                   LeaveStatus == LeaveStatus.AdminApproved ||
+                   LeaveStatus == LeaveStatus.NayabApproved ||
+                   (LeaveStatus == LeaveStatus.FullyApproved && StartDate > DateTime.UtcNow.Date);
         }
     }
 }
