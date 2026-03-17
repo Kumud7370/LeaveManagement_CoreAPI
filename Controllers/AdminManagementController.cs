@@ -9,6 +9,7 @@ namespace AttendanceManagementSystem.Controllers
 {
     [ApiController]
     [Route("api/admin-management")]
+    [Authorize(Roles = "Admin")]   // Only Admin can manage users
     public class AdminManagementController : ControllerBase
     {
         private readonly IAdminManagementService _adminManagementService;
@@ -18,157 +19,157 @@ namespace AttendanceManagementSystem.Controllers
             _adminManagementService = adminManagementService;
         }
 
-        [HttpPost("invitations/send")]
-        [Authorize(Roles = "SuperAdmin,Admin,Manager")]
-        public async Task<ActionResult<ApiResponseDto<InvitationResponseDto>>> SendInvitation([FromBody] SendInvitationDto dto)
+        // ─────────────────────────────────────────────
+        //  CREATE USER  (Tehsildar, NayabTehsildar, Employee)
+        // ─────────────────────────────────────────────
+
+        /// <summary>
+        /// Admin directly creates a user account with a username and password.
+        /// Role must be one of: Tehsildar, NayabTehsildar, Employee.
+        /// For Employee role, EmployeeId (of an existing employee record) is required.
+        /// </summary>
+        [HttpPost("users")]
+        public async Task<ActionResult<ApiResponseDto<CreateUserResponseDto>>> CreateUser(
+            [FromBody] CreateUserDto dto)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var userName = User.FindFirst(ClaimTypes.Name)?.Value;
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var (adminId, adminName, ipAddress) = GetCallerInfo();
+            if (adminId == null)
+                return Unauthorized(ApiResponseDto<CreateUserResponseDto>.ErrorResponse("User not authenticated"));
 
-            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userName))
-            {
-                return Unauthorized(ApiResponseDto<InvitationResponseDto>.ErrorResponse("User not authenticated"));
-            }
-
-            var result = await _adminManagementService.SendInvitationAsync(dto, userId, userName, ipAddress);
+            var result = await _adminManagementService.CreateUserAsync(dto, adminId, adminName!, ipAddress);
 
             if (result == null)
-            {
-                return BadRequest(ApiResponseDto<InvitationResponseDto>.ErrorResponse(
-                    "Failed to send invitation. User may already exist or you don't have permission to invite this role."));
-            }
+                return BadRequest(ApiResponseDto<CreateUserResponseDto>.ErrorResponse(
+                    "Failed to create user. Username or email may already exist, " +
+                    "the role is invalid, or the employee record is not found / already linked."));
 
-            return Ok(ApiResponseDto<InvitationResponseDto>.SuccessResponse(result, "Invitation sent successfully"));
+            return Ok(ApiResponseDto<CreateUserResponseDto>.SuccessResponse(result, "User created successfully"));
         }
 
-        [HttpPut("invitations/{id}")]
-        [Authorize(Roles = "SuperAdmin,Admin,Manager")]
-        public async Task<ActionResult<ApiResponseDto<InvitationResponseDto>>> UpdateInvitation(
+        // ─────────────────────────────────────────────
+        //  UPDATE USER
+        // ─────────────────────────────────────────────
+
+        [HttpPut("users/{id}")]
+        public async Task<ActionResult<ApiResponseDto<CreateUserResponseDto>>> UpdateUser(
             string id,
-            [FromBody] EditInvitationDto dto)
+            [FromBody] UpdateUserDto dto)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var (adminId, _, ipAddress) = GetCallerInfo();
+            if (adminId == null)
+                return Unauthorized(ApiResponseDto<CreateUserResponseDto>.ErrorResponse("User not authenticated"));
 
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized(ApiResponseDto<InvitationResponseDto>.ErrorResponse("User not authenticated"));
-            }
-
-            var result = await _adminManagementService.UpdateInvitationAsync(id, dto, userId, ipAddress);
+            var result = await _adminManagementService.UpdateUserAsync(id, dto, adminId, ipAddress);
 
             if (result == null)
-            {
-                return BadRequest(ApiResponseDto<InvitationResponseDto>.ErrorResponse(
-                    "Failed to update invitation. Invitation may not exist or is not pending."));
-            }
+                return BadRequest(ApiResponseDto<CreateUserResponseDto>.ErrorResponse(
+                    "Failed to update user. User may not exist or email is already taken."));
 
-            return Ok(ApiResponseDto<InvitationResponseDto>.SuccessResponse(result, "Invitation updated successfully"));
+            return Ok(ApiResponseDto<CreateUserResponseDto>.SuccessResponse(result, "User updated successfully"));
         }
 
-        [HttpPost("invitations/{id}/revoke")]
-        [Authorize(Roles = "SuperAdmin,Admin,Manager")]
-        public async Task<ActionResult<ApiResponseDto<bool>>> RevokeInvitation(string id)
+        // ─────────────────────────────────────────────
+        //  ACTIVATE / DEACTIVATE USER
+        // ─────────────────────────────────────────────
+
+        [HttpPatch("users/{id}/status")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> SetUserStatus(
+            string id,
+            [FromBody] bool isActive)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            if (string.IsNullOrEmpty(userId))
-            {
+            var (adminId, _, ipAddress) = GetCallerInfo();
+            if (adminId == null)
                 return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
-            }
 
-            var result = await _adminManagementService.RevokeInvitationAsync(id, userId, ipAddress);
+            var result = await _adminManagementService.SetUserActiveStatusAsync(id, isActive, adminId, ipAddress);
 
             if (!result)
-            {
-                return BadRequest(ApiResponseDto<bool>.ErrorResponse(
-                    "Failed to revoke invitation. Invitation may not exist or is not pending."));
-            }
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to update user status. User may not exist."));
 
-            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Invitation revoked successfully"));
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true,
+                isActive ? "User activated successfully" : "User deactivated successfully"));
         }
 
-        [HttpDelete("invitations/{id}")]
-        [Authorize(Roles = "SuperAdmin")]
-        public async Task<ActionResult<ApiResponseDto<bool>>> DeleteInvitation(string id)
+        // ─────────────────────────────────────────────
+        //  DELETE USER
+        // ─────────────────────────────────────────────
+
+        [HttpDelete("users/{id}")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> DeleteUser(string id)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-            if (string.IsNullOrEmpty(userId))
-            {
+            var (adminId, _, ipAddress) = GetCallerInfo();
+            if (adminId == null)
                 return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
-            }
 
-            var result = await _adminManagementService.DeleteInvitationAsync(id, userId, ipAddress);
+            var result = await _adminManagementService.DeleteUserAsync(id, adminId, ipAddress);
 
             if (!result)
-            {
-                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to delete invitation"));
-            }
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to delete user. User may not exist."));
 
-            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Invitation deleted successfully"));
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "User deleted successfully"));
         }
 
-        [HttpGet("invitations")]
-        [Authorize(Roles = "SuperAdmin,Admin")]
-        public async Task<ActionResult<ApiResponseDto<IEnumerable<InvitationResponseDto>>>> GetAllInvitations()
+        // ─────────────────────────────────────────────
+        //  GET ALL USERS
+        // ─────────────────────────────────────────────
+
+        [HttpGet("users")]
+        public async Task<ActionResult<ApiResponseDto<IEnumerable<CreateUserResponseDto>>>> GetAllUsers()
         {
-            var invitations = await _adminManagementService.GetAllInvitationsAsync();
-            return Ok(ApiResponseDto<IEnumerable<InvitationResponseDto>>.SuccessResponse(
-                invitations,
-                "Invitations retrieved successfully"));
+            var result = await _adminManagementService.GetAllUsersAsync();
+            return Ok(ApiResponseDto<IEnumerable<CreateUserResponseDto>>.SuccessResponse(
+                result, "Users retrieved successfully"));
         }
 
-        [HttpGet("invitations/my-invitations")]
-        [Authorize(Roles = "SuperAdmin,Admin,Manager")]
-        public async Task<ActionResult<ApiResponseDto<IEnumerable<InvitationResponseDto>>>> GetMyInvitations()
+        // ─────────────────────────────────────────────
+        //  GET USER BY ID
+        // ─────────────────────────────────────────────
+
+        [HttpGet("users/{id}")]
+        public async Task<ActionResult<ApiResponseDto<CreateUserResponseDto>>> GetUserById(string id)
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized(ApiResponseDto<IEnumerable<InvitationResponseDto>>.ErrorResponse("User not authenticated"));
-            }
-
-            var invitations = await _adminManagementService.GetMyInvitationsAsync(userId);
-            return Ok(ApiResponseDto<IEnumerable<InvitationResponseDto>>.SuccessResponse(
-                invitations,
-                "Your invitations retrieved successfully"));
-        }
-
-        [HttpGet("invitations/validate/{token}")]
-        [AllowAnonymous]
-        public async Task<ActionResult<ApiResponseDto<InvitationResponseDto>>> ValidateToken(string token)
-        {
-            var result = await _adminManagementService.ValidateTokenAsync(token);
+            var result = await _adminManagementService.GetUserByIdAsync(id);
 
             if (result == null)
-            {
-                return BadRequest(ApiResponseDto<InvitationResponseDto>.ErrorResponse(
-                    "Invalid or expired invitation token"));
-            }
+                return NotFound(ApiResponseDto<CreateUserResponseDto>.ErrorResponse("User not found"));
 
-            return Ok(ApiResponseDto<InvitationResponseDto>.SuccessResponse(result, "Token is valid"));
+            return Ok(ApiResponseDto<CreateUserResponseDto>.SuccessResponse(result));
         }
 
-        [HttpPost("invitations/accept")]
-        [AllowAnonymous]
-        public async Task<ActionResult<ApiResponseDto<bool>>> AcceptInvitation([FromBody] AcceptInvitationDto dto)
-        {
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        // ─────────────────────────────────────────────
+        //  ADMIN RESET PASSWORD FOR ANY USER
+        // ─────────────────────────────────────────────
 
-            var result = await _adminManagementService.AcceptInvitationAsync(dto, ipAddress);
+        /// <summary>
+        /// Admin can reset the password of any user directly.
+        /// </summary>
+        [HttpPost("users/{id}/reset-password")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> ResetUserPassword(
+            string id,
+            [FromBody] AdminResetPasswordDto dto)
+        {
+            var (adminId, _, ipAddress) = GetCallerInfo();
+            if (adminId == null)
+                return Unauthorized(ApiResponseDto<bool>.ErrorResponse("User not authenticated"));
+
+            var result = await _adminManagementService.ResetUserPasswordAsync(id, dto.NewPassword, adminId, ipAddress);
 
             if (!result)
-            {
-                return BadRequest(ApiResponseDto<bool>.ErrorResponse(
-                    "Failed to accept invitation. Token may be invalid, expired, or username already exists."));
-            }
+                return BadRequest(ApiResponseDto<bool>.ErrorResponse("Failed to reset password. User may not exist."));
 
-            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Invitation accepted successfully. You can now login."));
+            return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Password reset successfully"));
+        }
+
+        // ─────────────────────────────────────────────
+        //  HELPER
+        // ─────────────────────────────────────────────
+
+        private (string? id, string? name, string? ip) GetCallerInfo()
+        {
+            var id = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var name = User.FindFirst(ClaimTypes.Name)?.Value;
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            return (id, name, ip);
         }
     }
 }

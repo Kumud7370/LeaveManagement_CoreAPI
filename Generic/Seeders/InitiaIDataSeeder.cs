@@ -1,7 +1,6 @@
 ﻿using AttendanceManagementSystem.Common.Helpers;
 using AttendanceManagementSystem.Models.Entities;
 using AttendanceManagementSystem.Repositories.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace AttendanceManagementSystem.Data.Seeders
 {
@@ -26,7 +25,7 @@ namespace AttendanceManagementSystem.Data.Seeders
             try
             {
                 await SeedRolesAsync();
-                await SeedUsersAsync();
+                await SeedAdminUserAsync();
                 _logger.LogInformation("Database seeding completed successfully");
             }
             catch (Exception ex)
@@ -39,85 +38,87 @@ namespace AttendanceManagementSystem.Data.Seeders
         private async Task SeedRolesAsync()
         {
             var existingRoles = await _roleRepository.GetAllAsync();
-            if (existingRoles.Any())
-            {
-                _logger.LogInformation("Roles already exist. Skipping role seeding.");
-                return;
-            }
+            var existingNames = existingRoles.Select(r => r.Name).ToHashSet();
 
-            var roles = new List<Role>
+            // New role hierarchy — only create roles that don't exist yet
+            var desiredRoles = new List<Role>
             {
                 new Role
                 {
-                    Name = "SuperAdmin",
-                    Description = "Super Administrator with full system access",
-                    Permissions = new List<string> { "all", "manage_admins", "manage_invitations" }
+                    Name        = "Admin",
+                    Description = "Administrator — full access, creates and manages all users",
+                    Permissions = new List<string> { "all" }
                 },
                 new Role
                 {
-                    Name = "Admin",
-                    Description = "Administrator with full access",
-                    Permissions = new List<string> { "all", "manage_invitations" }
+                    Name        = "Tehsildar",
+                    Description = "Senior authority — read-only access to employee data",
+                    Permissions = new List<string> { "read" }
                 },
                 new Role
                 {
-                    Name = "Manager",
-                    Description = "Manager with limited access",
-                    Permissions = new List<string> { "read", "write", "manage_invitations" }
+                    Name        = "NayabTehsildar",
+                    Description = "Senior authority — read-only access to employee data",
+                    Permissions = new List<string> { "read" }
                 },
                 new Role
                 {
-                    Name = "Employee",
-                    Description = "Regular employee",
+                    Name        = "Employee",
+                    Description = "Regular employee — can only login and change own password",
                     Permissions = new List<string> { "read" }
                 }
             };
 
-            foreach (var role in roles)
+            foreach (var role in desiredRoles)
             {
-                await _roleRepository.CreateAsync(role);
-                _logger.LogInformation($"Created role: {role.Name}");
+                if (!existingNames.Contains(role.Name))
+                {
+                    await _roleRepository.CreateAsync(role);
+                    _logger.LogInformation("Created role: {RoleName}", role.Name);
+                }
+                else
+                {
+                    _logger.LogInformation("Role already exists, skipping: {RoleName}", role.Name);
+                }
             }
         }
 
-        private async Task SeedUsersAsync()
+        private async Task SeedAdminUserAsync()
         {
+            // Only create the admin user if NO users exist at all
             var existingUsers = await _userRepository.GetAllAsync();
             if (existingUsers.Any())
             {
-                _logger.LogInformation("Users already exist. Skipping user seeding.");
+                _logger.LogInformation("Users already exist. Skipping admin user seeding.");
                 return;
             }
 
-            var superAdminRole = (await _roleRepository.GetAllAsync())
-                .FirstOrDefault(r => r.Name == "SuperAdmin");
-
-            if (superAdminRole == null)
+            var adminRole = await _roleRepository.GetByNameAsync("Admin");
+            if (adminRole == null)
             {
-                _logger.LogWarning("SuperAdmin role not found. Cannot create SuperAdmin user.");
+                _logger.LogWarning("Admin role not found. Cannot create default admin user.");
                 return;
             }
 
-            //Username : superadmin
-            // Password: SuperAdmin@123
-            var superAdminUser = new User
+            // Default admin credentials — change immediately after first login
+            var adminUser = new User
             {
-                Username = "superadmin",
-                Email = "chanderekumud@gmail.com",
-                PasswordHash = PasswordHelper.HashPassword("SuperAdmin@123"),
-                FirstName = "Super",
+                Username = "admin",
+                Email = "admin@system.local",
+                PasswordHash = PasswordHelper.HashPassword("Admin@123"),
+                FirstName = "System",
                 LastName = "Admin",
                 IsActive = true,
-                RoleIds = new List<string> { superAdminRole.Id }
+                RoleIds = new List<string> { adminRole.Id }
             };
 
-            await _userRepository.CreateAsync(superAdminUser);
+            await _userRepository.CreateAsync(adminUser);
 
             _logger.LogInformation("===========================================");
-            _logger.LogInformation("SUPER ADMIN USER CREATED SUCCESSFULLY");
-            _logger.LogInformation("Username: superadmin");
-            _logger.LogInformation("Password: SuperAdmin@123");
-            _logger.LogInformation("Email: chanderekumud@gmail.com");
+            _logger.LogInformation("DEFAULT ADMIN USER CREATED");
+            _logger.LogInformation("Username : admin");
+            _logger.LogInformation("Password : Admin@123");
+            _logger.LogInformation("⚠️  Change this password after first login!");
             _logger.LogInformation("===========================================");
         }
     }
