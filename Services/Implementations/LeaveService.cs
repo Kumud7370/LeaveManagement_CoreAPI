@@ -280,6 +280,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             leave.LeaveStatus = LeaveStatus.FullyApproved;
             leave.TehsildarApprovedBy = tehsildarUserId;
             leave.TehsildarApprovedDate = DateTime.UtcNow;
+            leave.ApprovedBy = tehsildarUserId;        
+            leave.ApprovedDate = DateTime.UtcNow;
             leave.UpdatedBy = tehsildarUserId;
             return await _leaveRepository.UpdateAsync(id, leave);
         }
