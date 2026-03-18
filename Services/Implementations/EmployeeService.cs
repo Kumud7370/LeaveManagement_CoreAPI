@@ -385,9 +385,9 @@ namespace AttendanceManagementSystem.Services.Implementations
                 GenderName = employee.Gender.ToString(),
                 Address = employee.Address,
                 DepartmentId = employee.DepartmentId,
-                DepartmentName = departmentName,       
+                DepartmentName = departmentName,
                 DesignationId = employee.DesignationId,
-                DesignationName = designationName,     
+                DesignationName = designationName,
                 ManagerId = employee.ManagerId,
                 DateOfJoining = employee.DateOfJoining,
                 DateOfLeaving = employee.DateOfLeaving,
@@ -436,5 +436,67 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             return map;
         }
+
+        // ── Bulk Reassign ─────────────────────────────────────────────────────
+        public async Task<BulkReassignResultDto> BulkReassignEmployeesAsync(
+            BulkReassignEmployeeDto dto, string changedBy)
+        {
+            var result = new BulkReassignResultDto
+            {
+                TotalRequested = dto.EmployeeIds.Count
+            };
+
+            if (dto.EmployeeIds.Count == 0)
+                return result;
+
+            var employees = new List<Employee>();
+            foreach (var empId in dto.EmployeeIds)
+            {
+                var emp = await _employeeRepository.GetByIdAsync(empId);
+                if (emp == null || emp.IsDeleted)
+                {
+                    result.FailedIds.Add(empId);
+                    result.Failed++;
+                }
+                else
+                {
+                    employees.Add(emp);
+                }
+            }
+
+            if (employees.Count == 0)
+                return result;
+
+            var historyTasks = employees.Select(emp =>
+                _assignmentHistoryRepository.CreateAsync(new EmployeeAssignmentHistory
+                {
+                    EmployeeId = emp.Id,
+                    FromDepartmentId = emp.DepartmentId,
+                    ToDepartmentId = dto.ToDepartmentId,
+                    FromDesignationId = emp.DesignationId,
+                    ToDesignationId = dto.ToDesignationId,
+                    ChangedBy = changedBy,
+                    ChangedAt = DateTime.UtcNow,
+                    Reason = dto.Reason
+                })
+            );
+            await Task.WhenAll(historyTasks);
+
+            var validIds = employees.Select(e => e.Id);
+            var modifiedCount = await _employeeRepository.BulkReassignAsync(
+                validIds, dto.ToDepartmentId, dto.ToDesignationId, changedBy);
+
+            result.Succeeded = (int)modifiedCount;
+
+            var notModified = employees.Count - result.Succeeded;
+            if (notModified > 0)
+            {
+                result.Failed += notModified;
+
+            }
+
+            return result;
+        }
+
     }
 }

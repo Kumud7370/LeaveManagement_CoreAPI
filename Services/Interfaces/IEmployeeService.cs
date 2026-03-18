@@ -19,5 +19,6 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<Dictionary<string, int>> GetEmployeeStatisticsByStatusAsync();
         Task<EmployeeResponseDto?> ReassignEmployeeAsync(string id, ReassignEmployeeDto dto, string changedBy);
         Task<List<AssignmentHistoryResponseDto>> GetAssignmentHistoryAsync(string employeeId);
+        Task<BulkReassignResultDto> BulkReassignEmployeesAsync(BulkReassignEmployeeDto dto, string changedBy);
     }
 }

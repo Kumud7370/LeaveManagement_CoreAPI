@@ -11,6 +11,7 @@ namespace AttendanceManagementSystem.Models.DTOs.Designation
 
         public string DesignationName { get; set; } = string.Empty;
         public string? DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
 
         public string? Description { get; set; }
 

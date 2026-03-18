@@ -7,7 +7,7 @@ namespace AttendanceManagementSystem.Repositories.Interfaces
     {
         Task<Employee?> GetByEmployeeCodeAsync(string employeeCode);
         Task<Employee?> GetByEmailAsync(string email);
-        Task<Employee?> GetByUserIdAsync(string userId); // ← ADDED
+        Task<Employee?> GetByUserIdAsync(string userId);
         Task<bool> IsEmployeeCodeExistsAsync(string employeeCode, string? excludeId = null);
         Task<bool> IsEmailExistsAsync(string email, string? excludeId = null);
         Task<(List<Employee> Items, int TotalCount)> GetFilteredEmployeesAsync(EmployeeFilterDto filter);
@@ -15,5 +15,10 @@ namespace AttendanceManagementSystem.Repositories.Interfaces
         Task<List<Employee>> GetEmployeesByManagerAsync(string managerId);
         Task<List<Employee>> GetActiveEmployeesAsync();
         Task<int> GetEmployeeCountByStatusAsync(Models.Enums.EmployeeStatus status);
+        Task<long> BulkReassignAsync(
+            IEnumerable<string> employeeIds,
+            string toDepartmentId,
+            string toDesignationId,
+            string updatedBy);
     }
 }
