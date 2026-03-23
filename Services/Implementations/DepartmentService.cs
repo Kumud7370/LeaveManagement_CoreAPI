@@ -28,16 +28,27 @@ namespace AttendanceManagementSystem.Services.Implementations
             {
                 DepartmentId = Guid.NewGuid(),
                 DepartmentCode = dto.DepartmentCode,
+
+                // Marathi (primary)
+                DepartmentNameMr = dto.DepartmentNameMr,
+                DescriptionMr = dto.DescriptionMr,
+
+                // English (optional)
                 DepartmentName = dto.DepartmentName,
                 Description = dto.Description,
+
+                // Hindi (optional)
+                DepartmentNameHi = dto.DepartmentNameHi,
+                DescriptionHi = dto.DescriptionHi,
+
                 DisplayOrder = dto.DisplayOrder,
                 IsActive = dto.IsActive,
                 CreatedBy = createdBy,
                 CreatedAt = DateTime.UtcNow
             };
 
-            var createdDepartment = await _departmentRepository.CreateAsync(department);
-            return await MapToResponseDtoAsync(createdDepartment);
+            var created = await _departmentRepository.CreateAsync(department);
+            return await MapToResponseDtoAsync(created);
         }
 
         public async Task<DepartmentResponseDto?> GetDepartmentByIdAsync(Guid departmentId)
@@ -55,15 +66,18 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<DepartmentDetailResponseDto?> GetDepartmentDetailsAsync(Guid departmentId)
         {
             var department = await _departmentRepository.GetDepartmentWithDetailsAsync(departmentId);
-            if (department == null)
-                return null;
+            if (department == null) return null;
 
             var detailDto = new DepartmentDetailResponseDto
             {
                 DepartmentId = department.DepartmentId,
                 DepartmentCode = department.DepartmentCode,
+                DepartmentNameMr = department.DepartmentNameMr,
                 DepartmentName = department.DepartmentName,
+                DepartmentNameHi = department.DepartmentNameHi,
+                DescriptionMr = department.DescriptionMr,
                 Description = department.Description,
+                DescriptionHi = department.DescriptionHi,
                 IsActive = department.IsActive,
                 DisplayOrder = department.DisplayOrder,
                 CreatedAt = department.CreatedAt,
@@ -77,7 +91,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             {
                 EmployeeId = Guid.Parse(e.Id),
                 EmployeeCode = e.EmployeeCode,
-                FullName = e.GetFullName(),
+                FullName = e.GetFullName("mr"),
+                FullNameEn = !string.IsNullOrWhiteSpace(e.FirstName) ? e.GetFullName("en") : null,
                 Email = e.Email,
                 ProfileImageUrl = e.ProfileImageUrl
             }).ToList();
@@ -97,15 +112,14 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var (items, totalCount) = await _departmentRepository.GetFilteredDepartmentsAsync(filter);
 
-            var departmentDtos = new List<DepartmentResponseDto>();
-            foreach (var item in items)
-                departmentDtos.Add(await MapToResponseDtoAsync(item));
+            var dtos = new List<DepartmentResponseDto>();
+            foreach (var item in items) dtos.Add(await MapToResponseDtoAsync(item));
 
             var totalPages = (int)Math.Ceiling(totalCount / (double)filter.PageSize);
 
             return new PaginatedResponseDto<DepartmentResponseDto>
             {
-                Items = departmentDtos,
+                Items = dtos,
                 PageNumber = filter.PageNumber,
                 PageSize = filter.PageSize,
                 TotalPages = totalPages,
@@ -114,16 +128,13 @@ namespace AttendanceManagementSystem.Services.Implementations
         }
 
         public async Task<List<DepartmentResponseDto>> GetChildDepartmentsAsync(Guid parentDepartmentId)
-        {
-            return new List<DepartmentResponseDto>();
-        }
+            => new List<DepartmentResponseDto>();
 
         public async Task<List<DepartmentResponseDto>> GetRootDepartmentsAsync()
         {
             var departments = await _departmentRepository.GetRootDepartmentsAsync();
             var result = new List<DepartmentResponseDto>();
-            foreach (var department in departments)
-                result.Add(await MapToResponseDtoAsync(department));
+            foreach (var d in departments) result.Add(await MapToResponseDtoAsync(d));
             return result;
         }
 
@@ -131,8 +142,7 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var departments = await _departmentRepository.GetActiveDepartmentsAsync();
             var result = new List<DepartmentResponseDto>();
-            foreach (var department in departments)
-                result.Add(await MapToResponseDtoAsync(department));
+            foreach (var d in departments) result.Add(await MapToResponseDtoAsync(d));
             return result;
         }
 
@@ -148,7 +158,9 @@ namespace AttendanceManagementSystem.Services.Implementations
                 {
                     DepartmentId = dept.DepartmentId,
                     DepartmentCode = dept.DepartmentCode,
+                    DepartmentNameMr = dept.DepartmentNameMr,
                     DepartmentName = dept.DepartmentName,
+                    DepartmentNameHi = dept.DepartmentNameHi,
                     IsActive = dept.IsActive,
                     EmployeeCount = employeeCount,
                     Children = null
@@ -161,18 +173,26 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<DepartmentResponseDto?> UpdateDepartmentAsync(UpdateDepartmentRequestDto dto, Guid updatedBy)
         {
             var department = await _departmentRepository.GetByDepartmentIdAsync(dto.DepartmentId);
-            if (department == null)
-                return null;
+            if (department == null) return null;
 
             if (dto.DepartmentCode != department.DepartmentCode)
-            {
                 if (await _departmentRepository.IsDepartmentCodeExistsAsync(dto.DepartmentCode, dto.DepartmentId))
                     return null;
-            }
 
             department.DepartmentCode = dto.DepartmentCode;
+
+            // Marathi (primary)
+            department.DepartmentNameMr = dto.DepartmentNameMr;
+            department.DescriptionMr = dto.DescriptionMr;
+
+            // English
             department.DepartmentName = dto.DepartmentName;
             department.Description = dto.Description;
+
+            // Hindi
+            department.DepartmentNameHi = dto.DepartmentNameHi;
+            department.DescriptionHi = dto.DescriptionHi;
+
             department.DisplayOrder = dto.DisplayOrder;
             department.IsActive = dto.IsActive;
             department.UpdatedBy = updatedBy;
@@ -185,11 +205,8 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<bool> DeleteDepartmentAsync(Guid departmentId, Guid deletedBy)
         {
             var department = await _departmentRepository.GetByDepartmentIdAsync(departmentId);
-            if (department == null)
-                return false;
-
-            if (!await CanDeleteDepartmentAsync(departmentId))
-                return false;
+            if (department == null) return false;
+            if (!await CanDeleteDepartmentAsync(departmentId)) return false;
 
             department.IsDeleted = true;
             department.DeletedAt = DateTime.UtcNow;
@@ -203,20 +220,16 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<bool> ToggleDepartmentStatusAsync(Guid departmentId, Guid updatedBy)
         {
             var department = await _departmentRepository.GetByDepartmentIdAsync(departmentId);
-            if (department == null)
-                return false;
-
+            if (department == null) return false;
             department.IsActive = !department.IsActive;
             department.UpdatedBy = updatedBy;
             department.UpdatedAt = DateTime.UtcNow;
-
             return await _departmentRepository.UpdateAsync(department.Id, department);
         }
 
         public async Task<Dictionary<string, int>> GetDepartmentStatisticsAsync()
         {
             var allDepartments = await _departmentRepository.GetDepartmentHierarchyAsync();
-
             var statistics = new Dictionary<string, int>
             {
                 { "TotalDepartments",    allDepartments.Count },
@@ -224,23 +237,16 @@ namespace AttendanceManagementSystem.Services.Implementations
                 { "InactiveDepartments", allDepartments.Count(d => !d.IsActive) }
             };
 
-            int departmentsWithEmployees = 0;
+            int withEmployees = 0;
             foreach (var dept in allDepartments)
-            {
-                if (await _departmentRepository.HasEmployeesAsync(dept.DepartmentId))
-                    departmentsWithEmployees++;
-            }
-            statistics.Add("DepartmentsWithEmployees", departmentsWithEmployees);
+                if (await _departmentRepository.HasEmployeesAsync(dept.DepartmentId)) withEmployees++;
 
+            statistics.Add("DepartmentsWithEmployees", withEmployees);
             return statistics;
         }
 
         public async Task<bool> CanDeleteDepartmentAsync(Guid departmentId)
-        {
-            if (await _departmentRepository.HasEmployeesAsync(departmentId))
-                return false;
-            return true;
-        }
+            => !await _departmentRepository.HasEmployeesAsync(departmentId);
 
         private async Task<DepartmentResponseDto> MapToResponseDtoAsync(Department department)
         {
@@ -248,8 +254,12 @@ namespace AttendanceManagementSystem.Services.Implementations
             {
                 DepartmentId = department.DepartmentId,
                 DepartmentCode = department.DepartmentCode,
+                DepartmentNameMr = department.DepartmentNameMr,
                 DepartmentName = department.DepartmentName,
+                DepartmentNameHi = department.DepartmentNameHi,
+                DescriptionMr = department.DescriptionMr,
                 Description = department.Description,
+                DescriptionHi = department.DescriptionHi,
                 IsActive = department.IsActive,
                 DisplayOrder = department.DisplayOrder,
                 CreatedAt = department.CreatedAt,

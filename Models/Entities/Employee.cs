@@ -2,8 +2,6 @@
 using AttendanceManagementSystem.Models.ValueObjects;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using System.Net;
-using System.Text.Json.Serialization;
 
 namespace AttendanceManagementSystem.Models.Entities
 {
@@ -13,14 +11,35 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("employeeCode")]
         public string EmployeeCode { get; set; } = string.Empty;
 
+        // ── Marathi names (PRIMARY — required) ────────────────────────────
+        [BsonElement("firstNameMr")]
+        public string FirstNameMr { get; set; } = string.Empty;
+
+        [BsonElement("middleNameMr")]
+        public string? MiddleNameMr { get; set; }
+
+        [BsonElement("lastNameMr")]
+        public string LastNameMr { get; set; } = string.Empty;
+
+        // ── English names (secondary — optional) ──────────────────────────
         [BsonElement("firstName")]
-        public string FirstName { get; set; } = string.Empty;
+        public string? FirstName { get; set; }
 
         [BsonElement("middleName")]
         public string? MiddleName { get; set; }
 
         [BsonElement("lastName")]
-        public string LastName { get; set; } = string.Empty;
+        public string? LastName { get; set; }
+
+        // ── Hindi names (optional) ────────────────────────────────────────
+        [BsonElement("firstNameHi")]
+        public string? FirstNameHi { get; set; }
+
+        [BsonElement("middleNameHi")]
+        public string? MiddleNameHi { get; set; }
+
+        [BsonElement("lastNameHi")]
+        public string? LastNameHi { get; set; }
 
         [BsonElement("userId")]
         public string? UserId { get; set; }
@@ -86,11 +105,41 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]
         public DateTime? DeletedAt { get; set; }
 
-        public string GetFullName()
+
+        public string GetFullName() => GetFullName("mr");
+
+        public string GetFullName(string lang)
         {
-            return string.IsNullOrEmpty(MiddleName)
-                ? $"{FirstName} {LastName}"
-                : $"{FirstName} {MiddleName} {LastName}";
+            return lang switch
+            {
+                "mr" => BuildName(
+                            FirstNameMr,
+                            MiddleNameMr,
+                            LastNameMr),
+
+                "hi" when !string.IsNullOrWhiteSpace(FirstNameHi)
+                    => BuildName(
+                            FirstNameHi,
+                            MiddleNameHi,
+                            LastNameHi ?? LastNameMr),
+
+                "en" when !string.IsNullOrWhiteSpace(FirstName)
+                    => BuildName(
+                            FirstName,
+                            MiddleName,
+                            LastName ?? LastNameMr),
+
+                _ => BuildName(FirstNameMr, MiddleNameMr, LastNameMr)
+            };
+        }
+
+        private static string BuildName(string? first, string? middle, string? last)
+        {
+            var f = first ?? string.Empty;
+            var l = last ?? string.Empty;
+            return string.IsNullOrWhiteSpace(middle)
+                ? $"{f} {l}".Trim()
+                : $"{f} {middle} {l}".Trim();
         }
 
         public int GetAge()
@@ -102,8 +151,6 @@ namespace AttendanceManagementSystem.Models.Entities
         }
 
         public bool IsCurrentlyEmployed()
-        {
-            return !DateOfLeaving.HasValue && EmployeeStatus == EmployeeStatus.Active;
-        }
+            => !DateOfLeaving.HasValue && EmployeeStatus == EmployeeStatus.Active;
     }
 }

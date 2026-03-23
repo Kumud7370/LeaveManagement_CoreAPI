@@ -1,9 +1,8 @@
-﻿using System.Text;
-using AttendanceManagementSystem.Common.Helpers;
+﻿using AttendanceManagementSystem.Common.Helpers;
 using AttendanceManagementSystem.Data.Implementations;
 using AttendanceManagementSystem.Data.Interfaces;
-using AttendanceManagementSystem.Data.Seeders;
 using AttendanceManagementSystem.Data.Migrations;  
+using AttendanceManagementSystem.Data.Seeders;
 using AttendanceManagementSystem.Models.Settings;
 using AttendanceManagementSystem.Repositories.Implementations;
 using AttendanceManagementSystem.Repositories.Interfaces;
@@ -15,6 +14,8 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MongoDB.Driver;
+using System.Text;
 
 namespace AttendanceManagementSystem.Common.Extensions
 {
@@ -27,6 +28,7 @@ namespace AttendanceManagementSystem.Common.Extensions
             services.Configure<EmailSettings>(configuration.GetSection("EmailSettings"));
 
             services.AddSingleton<IMongoDbContext, MongoDbContext>();
+            services.AddSingleton<IMongoDatabase>(sp =>sp.GetRequiredService<IMongoDbContext>().Database);
 
             services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IRoleRepository, RoleRepository>();
