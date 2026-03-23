@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿/*using System.ComponentModel.DataAnnotations;
 namespace AttendanceManagementSystem.Models.DTOs.Department
 {
     public class CreateDepartmentRequestDto
@@ -16,6 +16,47 @@ namespace AttendanceManagementSystem.Models.DTOs.Department
         public string? Description { get; set; }
 
         [Range(0, int.MaxValue, ErrorMessage = "Display order must be a positive number")]
+        public int DisplayOrder { get; set; } = 0;
+
+        public bool IsActive { get; set; } = true;
+    }
+}*/
+
+using System.ComponentModel.DataAnnotations;
+
+namespace AttendanceManagementSystem.Models.DTOs.Department
+{
+    public class CreateDepartmentRequestDto
+    {
+        [Required(ErrorMessage = "Department code is required")]
+        [StringLength(20, MinimumLength = 2)]
+        [RegularExpression("^[A-Z0-9_-]+$", ErrorMessage = "Department code must contain only uppercase letters, numbers, underscores, and hyphens")]
+        public string DepartmentCode { get; set; } = string.Empty;
+
+        // ── Marathi name (required) ───────────────────────────────────────
+        [Required(ErrorMessage = "Department name in Marathi is required")]
+        [StringLength(100, MinimumLength = 2)]
+        public string DepartmentNameMr { get; set; } = string.Empty;
+
+        // ── English name (optional) ───────────────────────────────────────
+        [StringLength(100)]
+        public string? DepartmentName { get; set; }
+
+        // ── Hindi name (optional) ─────────────────────────────────────────
+        [StringLength(100)]
+        public string? DepartmentNameHi { get; set; }
+
+        // ── Descriptions ──────────────────────────────────────────────────
+        [StringLength(500)]
+        public string? DescriptionMr { get; set; }
+
+        [StringLength(500)]
+        public string? Description { get; set; }
+
+        [StringLength(500)]
+        public string? DescriptionHi { get; set; }
+
+        [Range(0, int.MaxValue)]
         public int DisplayOrder { get; set; } = 0;
 
         public bool IsActive { get; set; } = true;

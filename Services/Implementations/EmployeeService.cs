@@ -37,9 +37,22 @@ namespace AttendanceManagementSystem.Services.Implementations
             var employee = new Employee
             {
                 EmployeeCode = dto.EmployeeCode,
+
+                // Marathi (primary — required)
+                FirstNameMr = dto.FirstNameMr,
+                MiddleNameMr = dto.MiddleNameMr,
+                LastNameMr = dto.LastNameMr,
+
+                // English (optional)
                 FirstName = dto.FirstName,
                 MiddleName = dto.MiddleName,
                 LastName = dto.LastName,
+
+                // Hindi (optional)
+                FirstNameHi = dto.FirstNameHi,
+                MiddleNameHi = dto.MiddleNameHi,
+                LastNameHi = dto.LastNameHi,
+
                 Email = dto.Email,
                 PhoneNumber = dto.PhoneNumber,
                 AlternatePhoneNumber = dto.AlternatePhoneNumber,
@@ -58,8 +71,8 @@ namespace AttendanceManagementSystem.Services.Implementations
                 CreatedBy = createdBy
             };
 
-            var createdEmployee = await _employeeRepository.CreateAsync(employee);
-            return await MapToResponseDtoAsync(createdEmployee);
+            var created = await _employeeRepository.CreateAsync(employee);
+            return await MapToResponseDtoAsync(created);
         }
 
         public async Task<EmployeeResponseDto?> GetEmployeeByIdAsync(string id)
@@ -84,39 +97,22 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var (items, totalCount) = await _employeeRepository.GetFilteredEmployeesAsync(filter);
 
-            // Collect unique department and designation IDs to batch-resolve names
-            var departmentIds = items
-                .Select(e => e.DepartmentId)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Distinct()
-                .ToList();
+            var departmentIds = items.Select(e => e.DepartmentId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
+            var designationIds = items.Select(e => e.DesignationId).Where(id => !string.IsNullOrEmpty(id)).Distinct().ToList();
 
-            var designationIds = items
-                .Select(e => e.DesignationId)
-                .Where(id => !string.IsNullOrEmpty(id))
-                .Distinct()
-                .ToList();
-
-            // Batch fetch departments and designations
             var departmentMap = await GetDepartmentNamesAsync(departmentIds);
             var designationMap = await GetDesignationNamesAsync(designationIds);
 
-            var employeeDtos = items.Select(e => MapToResponseDto(e, departmentMap, designationMap)).ToList();
+            var dtos = items.Select(e => MapToResponseDto(e, departmentMap, designationMap)).ToList();
 
-            return new PagedResultDto<EmployeeResponseDto>(
-                employeeDtos,
-                totalCount,
-                filter.PageNumber,
-                filter.PageSize
-            );
+            return new PagedResultDto<EmployeeResponseDto>(dtos, totalCount, filter.PageNumber, filter.PageSize);
         }
 
         public async Task<List<EmployeeResponseDto>> GetEmployeesByDepartmentAsync(string departmentId)
         {
             var employees = await _employeeRepository.GetEmployeesByDepartmentAsync(departmentId);
             var result = new List<EmployeeResponseDto>();
-            foreach (var e in employees)
-                result.Add(await MapToResponseDtoAsync(e));
+            foreach (var e in employees) result.Add(await MapToResponseDtoAsync(e));
             return result;
         }
 
@@ -124,8 +120,7 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var employees = await _employeeRepository.GetEmployeesByManagerAsync(managerId);
             var result = new List<EmployeeResponseDto>();
-            foreach (var e in employees)
-                result.Add(await MapToResponseDtoAsync(e));
+            foreach (var e in employees) result.Add(await MapToResponseDtoAsync(e));
             return result;
         }
 
@@ -133,78 +128,52 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var employees = await _employeeRepository.GetActiveEmployeesAsync();
             var result = new List<EmployeeResponseDto>();
-            foreach (var e in employees)
-                result.Add(await MapToResponseDtoAsync(e));
+            foreach (var e in employees) result.Add(await MapToResponseDtoAsync(e));
             return result;
         }
 
         public async Task<EmployeeResponseDto?> UpdateEmployeeAsync(string id, UpdateEmployeeDto dto, string updatedBy)
         {
             var employee = await _employeeRepository.GetByIdAsync(id);
-            if (employee == null)
-                return null;
+            if (employee == null) return null;
 
             if (!string.IsNullOrEmpty(dto.Email) && dto.Email != employee.Email)
-            {
                 if (await _employeeRepository.IsEmailExistsAsync(dto.Email, id))
                     return null;
-            }
 
-            if (!string.IsNullOrEmpty(dto.FirstName))
-                employee.FirstName = dto.FirstName;
+            // Marathi names — only update if provided
+            if (!string.IsNullOrWhiteSpace(dto.FirstNameMr)) employee.FirstNameMr = dto.FirstNameMr;
+            if (dto.MiddleNameMr != null) employee.MiddleNameMr = dto.MiddleNameMr;
+            if (!string.IsNullOrWhiteSpace(dto.LastNameMr)) employee.LastNameMr = dto.LastNameMr;
 
-            if (dto.MiddleName != null)
-                employee.MiddleName = dto.MiddleName;
+            // English names
+            if (dto.FirstName != null) employee.FirstName = dto.FirstName;
+            if (dto.MiddleName != null) employee.MiddleName = dto.MiddleName;
+            if (dto.LastName != null) employee.LastName = dto.LastName;
 
-            if (!string.IsNullOrEmpty(dto.LastName))
-                employee.LastName = dto.LastName;
+            // Hindi names
+            if (dto.FirstNameHi != null) employee.FirstNameHi = dto.FirstNameHi;
+            if (dto.MiddleNameHi != null) employee.MiddleNameHi = dto.MiddleNameHi;
+            if (dto.LastNameHi != null) employee.LastNameHi = dto.LastNameHi;
 
-            if (!string.IsNullOrEmpty(dto.Email))
-                employee.Email = dto.Email;
-
-            if (!string.IsNullOrEmpty(dto.PhoneNumber))
-                employee.PhoneNumber = dto.PhoneNumber;
-
-            if (dto.AlternatePhoneNumber != null)
-                employee.AlternatePhoneNumber = dto.AlternatePhoneNumber;
-
-            if (dto.DateOfBirth.HasValue)
-                employee.DateOfBirth = dto.DateOfBirth.Value;
-
-            if (dto.Gender.HasValue)
-                employee.Gender = dto.Gender.Value;
-
-            if (dto.Address is not null)
-                employee.Address = dto.Address;
-
-            if (!string.IsNullOrEmpty(dto.DepartmentId))
-                employee.DepartmentId = dto.DepartmentId;
-
-            if (!string.IsNullOrEmpty(dto.DesignationId))
-                employee.DesignationId = dto.DesignationId;
-
-            if (dto.ManagerId != null)
-                employee.ManagerId = dto.ManagerId;
-
-            if (dto.DateOfJoining.HasValue)
-                employee.DateOfJoining = dto.DateOfJoining.Value;
-
-            if (dto.DateOfLeaving.HasValue)
-                employee.DateOfLeaving = dto.DateOfLeaving;
-
-            if (dto.EmploymentType.HasValue)
-                employee.EmploymentType = dto.EmploymentType.Value;
-
-            if (dto.EmployeeStatus.HasValue)
-                employee.EmployeeStatus = dto.EmployeeStatus.Value;
-
-            if (dto.ProfileImageUrl != null)
-                employee.ProfileImageUrl = dto.ProfileImageUrl;
-
-            if (dto.BiometricId != null)
-                employee.BiometricId = dto.BiometricId;
+            if (!string.IsNullOrEmpty(dto.Email)) employee.Email = dto.Email;
+            if (!string.IsNullOrEmpty(dto.PhoneNumber)) employee.PhoneNumber = dto.PhoneNumber;
+            if (dto.AlternatePhoneNumber != null) employee.AlternatePhoneNumber = dto.AlternatePhoneNumber;
+            if (dto.DateOfBirth.HasValue) employee.DateOfBirth = dto.DateOfBirth.Value;
+            if (dto.Gender.HasValue) employee.Gender = dto.Gender.Value;
+            if (dto.Address != null) employee.Address = dto.Address;
+            if (!string.IsNullOrEmpty(dto.DepartmentId)) employee.DepartmentId = dto.DepartmentId;
+            if (!string.IsNullOrEmpty(dto.DesignationId)) employee.DesignationId = dto.DesignationId;
+            if (dto.ManagerId != null) employee.ManagerId = dto.ManagerId;
+            if (dto.DateOfJoining.HasValue) employee.DateOfJoining = dto.DateOfJoining.Value;
+            if (dto.DateOfLeaving.HasValue) employee.DateOfLeaving = dto.DateOfLeaving.Value;
+            if (dto.EmploymentType.HasValue) employee.EmploymentType = dto.EmploymentType.Value;
+            if (dto.EmployeeStatus.HasValue) employee.EmployeeStatus = dto.EmployeeStatus.Value;
+            if (dto.ProfileImageUrl != null) employee.ProfileImageUrl = dto.ProfileImageUrl;
+            if (dto.BiometricId != null) employee.BiometricId = dto.BiometricId;
 
             employee.UpdatedBy = updatedBy;
+            employee.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _employeeRepository.UpdateAsync(id, employee);
             return updated ? await MapToResponseDtoAsync(employee) : null;
@@ -213,78 +182,40 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<bool> DeleteEmployeeAsync(string id, string deletedBy)
         {
             var employee = await _employeeRepository.GetByIdAsync(id);
-            if (employee == null)
-                return false;
-
-            employee.UpdatedBy = deletedBy;
+            if (employee == null) return false;
+            employee.IsDeleted = true;
             employee.DeletedAt = DateTime.UtcNow;
-
+            employee.UpdatedBy = deletedBy;
+            employee.UpdatedAt = DateTime.UtcNow;
             return await _employeeRepository.DeleteAsync(id);
         }
 
         public async Task<bool> ChangeEmployeeStatusAsync(string id, EmployeeStatus status, string updatedBy)
         {
             var employee = await _employeeRepository.GetByIdAsync(id);
-            if (employee == null)
-                return false;
-
+            if (employee == null) return false;
             employee.EmployeeStatus = status;
             employee.UpdatedBy = updatedBy;
-
+            employee.UpdatedAt = DateTime.UtcNow;
             return await _employeeRepository.UpdateAsync(id, employee);
         }
 
         public async Task<Dictionary<string, int>> GetEmployeeStatisticsByStatusAsync()
         {
-            var statistics = new Dictionary<string, int>();
-
-            foreach (EmployeeStatus status in Enum.GetValues(typeof(EmployeeStatus)))
-            {
-                var count = await _employeeRepository.GetEmployeeCountByStatusAsync(status);
-                statistics[status.ToString()] = count;
-            }
-
-            return statistics;
+            var employees = await _employeeRepository.GetActiveEmployeesAsync();
+            return employees
+                .GroupBy(e => e.EmployeeStatus.ToString())
+                .ToDictionary(g => g.Key, g => g.Count());
         }
 
-        private async Task<EmployeeResponseDto> MapToResponseDtoAsync(Employee employee)
-        {
-            string? departmentName = null;
-            string? designationName = null;
-
-            if (!string.IsNullOrEmpty(employee.DepartmentId) && Guid.TryParse(employee.DepartmentId, out var deptGuid))
-            {
-                try
-                {
-                    var dept = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
-                    departmentName = dept?.DepartmentName;
-                }
-                catch { /* leave null if not found */ }
-            }
-
-            if (!string.IsNullOrEmpty(employee.DesignationId))
-            {
-                try
-                {
-                    var desig = await _designationRepository.GetByIdAsync(employee.DesignationId);
-                    designationName = desig?.DesignationName;
-                }
-                catch { /* leave null if not found */ }
-            }
-
-            return BuildDto(employee, departmentName, designationName);
-        }
-
-        public async Task<EmployeeResponseDto?> ReassignEmployeeAsync(
-    string id, ReassignEmployeeDto dto, string changedBy)
+        public async Task<EmployeeResponseDto?> ReassignEmployeeAsync(string id, ReassignEmployeeDto dto, string changedBy)
         {
             var employee = await _employeeRepository.GetByIdAsync(id);
             if (employee == null) return null;
 
-            // Write history record before changing
-            var history = new EmployeeAssignmentHistory
+            await _assignmentHistoryRepository.CreateAsync(new EmployeeAssignmentHistory
             {
-                EmployeeId = id,
+                EmployeeId = employee.Id,
                 FromDepartmentId = employee.DepartmentId,
                 ToDepartmentId = dto.ToDepartmentId,
                 FromDesignationId = employee.DesignationId,
@@ -292,13 +223,12 @@ namespace AttendanceManagementSystem.Services.Implementations
                 ChangedBy = changedBy,
                 ChangedAt = DateTime.UtcNow,
                 Reason = dto.Reason
-            };
-            await _assignmentHistoryRepository.CreateAsync(history);
+            });
 
-            // Update employee current values
             employee.DepartmentId = dto.ToDepartmentId;
             employee.DesignationId = dto.ToDesignationId;
             employee.UpdatedBy = changedBy;
+            employee.UpdatedAt = DateTime.UtcNow;
 
             var updated = await _employeeRepository.UpdateAsync(id, employee);
             return updated ? await MapToResponseDtoAsync(employee) : null;
@@ -311,10 +241,8 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             foreach (var h in history)
             {
-                // Resolve names for display
                 string? fromDeptName = null, toDeptName = null;
                 string? fromDesigName = null, toDesigName = null;
-                string? changedByName = null;
 
                 if (!string.IsNullOrEmpty(h.FromDepartmentId) && Guid.TryParse(h.FromDepartmentId, out var fromDeptGuid))
                 {
@@ -356,6 +284,74 @@ namespace AttendanceManagementSystem.Services.Implementations
             }
             return result;
         }
+
+        // ── Bulk Reassign ─────────────────────────────────────────────────────
+        public async Task<BulkReassignResultDto> BulkReassignEmployeesAsync(BulkReassignEmployeeDto dto, string changedBy)
+        {
+            var result = new BulkReassignResultDto { TotalRequested = dto.EmployeeIds.Count };
+            if (dto.EmployeeIds.Count == 0) return result;
+
+            var employees = new List<Employee>();
+            foreach (var empId in dto.EmployeeIds)
+            {
+                var emp = await _employeeRepository.GetByIdAsync(empId);
+                if (emp == null || emp.IsDeleted) { result.FailedIds.Add(empId); result.Failed++; }
+                else employees.Add(emp);
+            }
+
+            if (employees.Count == 0) return result;
+
+            var historyTasks = employees.Select(emp =>
+                _assignmentHistoryRepository.CreateAsync(new EmployeeAssignmentHistory
+                {
+                    EmployeeId = emp.Id,
+                    FromDepartmentId = emp.DepartmentId,
+                    ToDepartmentId = dto.ToDepartmentId,
+                    FromDesignationId = emp.DesignationId,
+                    ToDesignationId = dto.ToDesignationId,
+                    ChangedBy = changedBy,
+                    ChangedAt = DateTime.UtcNow,
+                    Reason = dto.Reason
+                }));
+            await Task.WhenAll(historyTasks);
+
+            var validIds = employees.Select(e => e.Id);
+            var modifiedCount = await _employeeRepository.BulkReassignAsync(validIds, dto.ToDepartmentId, dto.ToDesignationId, changedBy);
+            result.Succeeded = (int)modifiedCount;
+            var notModified = employees.Count - result.Succeeded;
+            if (notModified > 0) result.Failed += notModified;
+
+            return result;
+        }
+
+        // ── Mapping helpers ───────────────────────────────────────────────────
+        private async Task<EmployeeResponseDto> MapToResponseDtoAsync(Employee employee)
+        {
+            string? departmentName = null;
+            string? designationName = null;
+            string? managerName = null;
+
+            if (!string.IsNullOrEmpty(employee.DepartmentId) && Guid.TryParse(employee.DepartmentId, out var deptGuid))
+            {
+                var dept = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
+                departmentName = dept?.DepartmentName;
+            }
+
+            if (!string.IsNullOrEmpty(employee.DesignationId))
+            {
+                var desig = await _designationRepository.GetByIdAsync(employee.DesignationId);
+                designationName = desig?.DesignationName;
+            }
+
+            if (!string.IsNullOrEmpty(employee.ManagerId))
+            {
+                var manager = await _employeeRepository.GetByIdAsync(employee.ManagerId);
+                managerName = manager?.GetFullName("mr");
+            }
+
+            return BuildDto(employee, departmentName, designationName, managerName);
+        }
+
         private EmployeeResponseDto MapToResponseDto(
             Employee employee,
             Dictionary<string, string> departmentMap,
@@ -363,19 +359,49 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             departmentMap.TryGetValue(employee.DepartmentId ?? "", out var departmentName);
             designationMap.TryGetValue(employee.DesignationId ?? "", out var designationName);
-            return BuildDto(employee, departmentName, designationName);
+            return BuildDto(employee, departmentName, designationName, null);
         }
 
-        private EmployeeResponseDto BuildDto(Employee employee, string? departmentName, string? designationName)
+        private static EmployeeResponseDto BuildDto(
+            Employee employee,
+            string? departmentName,
+            string? designationName,
+            string? managerName)
         {
+            // Compute English full name helper
+            static string? BuildName(string? first, string? middle, string? last)
+            {
+                if (string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)) return null;
+                return string.IsNullOrWhiteSpace(middle)
+                    ? $"{first} {last}"
+                    : $"{first} {middle} {last}";
+            }
+
             return new EmployeeResponseDto
             {
                 Id = employee.Id,
                 EmployeeCode = employee.EmployeeCode,
+
+                // Marathi
+                FirstNameMr = employee.FirstNameMr,
+                MiddleNameMr = employee.MiddleNameMr,
+                LastNameMr = employee.LastNameMr,
+
+                // English
                 FirstName = employee.FirstName,
                 MiddleName = employee.MiddleName,
                 LastName = employee.LastName,
-                FullName = employee.GetFullName(),
+
+                // Hindi
+                FirstNameHi = employee.FirstNameHi,
+                MiddleNameHi = employee.MiddleNameHi,
+                LastNameHi = employee.LastNameHi,
+
+                // Computed names
+                FullName = employee.GetFullName("mr"),
+                FullNameEn = BuildName(employee.FirstName, employee.MiddleName, employee.LastName),
+                FullNameHi = BuildName(employee.FirstNameHi, employee.MiddleNameHi, employee.LastNameHi),
+
                 Email = employee.Email,
                 PhoneNumber = employee.PhoneNumber,
                 AlternatePhoneNumber = employee.AlternatePhoneNumber,
@@ -389,6 +415,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 DesignationId = employee.DesignationId,
                 DesignationName = designationName,
                 ManagerId = employee.ManagerId,
+                ManagerName = managerName,
                 DateOfJoining = employee.DateOfJoining,
                 DateOfLeaving = employee.DateOfLeaving,
                 EmploymentType = employee.EmploymentType,
@@ -410,17 +437,15 @@ namespace AttendanceManagementSystem.Services.Implementations
             {
                 try
                 {
-                    if (!Guid.TryParse(id, out var deptGuid))
-                        continue;
-
-                    var dept = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
-                    if (dept != null)
-                        map[id] = dept.DepartmentName;
+                    if (!Guid.TryParse(id, out var guid)) continue;
+                    var dept = await _departmentRepository.GetByDepartmentIdAsync(guid);
+                    if (dept != null) map[id] = dept.DepartmentName;
                 }
-                catch { /* skip if not found */ }
+                catch { }
             }
             return map;
         }
+
         private async Task<Dictionary<string, string>> GetDesignationNamesAsync(List<string> ids)
         {
             var map = new Dictionary<string, string>();
@@ -429,74 +454,11 @@ namespace AttendanceManagementSystem.Services.Implementations
                 try
                 {
                     var desig = await _designationRepository.GetByIdAsync(id);
-                    if (desig != null)
-                        map[id] = desig.DesignationName;
+                    if (desig != null) map[id] = desig.DesignationName;
                 }
-                catch { /* skip if not found */ }
+                catch { }
             }
             return map;
         }
-
-        // ── Bulk Reassign ─────────────────────────────────────────────────────
-        public async Task<BulkReassignResultDto> BulkReassignEmployeesAsync(
-            BulkReassignEmployeeDto dto, string changedBy)
-        {
-            var result = new BulkReassignResultDto
-            {
-                TotalRequested = dto.EmployeeIds.Count
-            };
-
-            if (dto.EmployeeIds.Count == 0)
-                return result;
-
-            var employees = new List<Employee>();
-            foreach (var empId in dto.EmployeeIds)
-            {
-                var emp = await _employeeRepository.GetByIdAsync(empId);
-                if (emp == null || emp.IsDeleted)
-                {
-                    result.FailedIds.Add(empId);
-                    result.Failed++;
-                }
-                else
-                {
-                    employees.Add(emp);
-                }
-            }
-
-            if (employees.Count == 0)
-                return result;
-
-            var historyTasks = employees.Select(emp =>
-                _assignmentHistoryRepository.CreateAsync(new EmployeeAssignmentHistory
-                {
-                    EmployeeId = emp.Id,
-                    FromDepartmentId = emp.DepartmentId,
-                    ToDepartmentId = dto.ToDepartmentId,
-                    FromDesignationId = emp.DesignationId,
-                    ToDesignationId = dto.ToDesignationId,
-                    ChangedBy = changedBy,
-                    ChangedAt = DateTime.UtcNow,
-                    Reason = dto.Reason
-                })
-            );
-            await Task.WhenAll(historyTasks);
-
-            var validIds = employees.Select(e => e.Id);
-            var modifiedCount = await _employeeRepository.BulkReassignAsync(
-                validIds, dto.ToDepartmentId, dto.ToDesignationId, changedBy);
-
-            result.Succeeded = (int)modifiedCount;
-
-            var notModified = employees.Count - result.Succeeded;
-            if (notModified > 0)
-            {
-                result.Failed += notModified;
-
-            }
-
-            return result;
-        }
-
     }
 }
