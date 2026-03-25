@@ -106,7 +106,7 @@ namespace AttendanceManagementSystem.Models.Entities
 
         [BsonElement("departmentNameHi")]
         public string? DepartmentNameHi { get; set; }
-─
+
         [BsonElement("descriptionMr")]
         public string? DescriptionMr { get; set; }
 
