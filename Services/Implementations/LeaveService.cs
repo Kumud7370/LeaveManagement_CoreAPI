@@ -280,7 +280,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             leave.LeaveStatus = LeaveStatus.FullyApproved;
             leave.TehsildarApprovedBy = tehsildarUserId;
             leave.TehsildarApprovedDate = DateTime.UtcNow;
-            leave.ApprovedBy = tehsildarUserId;        
+            leave.ApprovedBy = tehsildarUserId;
             leave.ApprovedDate = DateTime.UtcNow;
             leave.UpdatedBy = tehsildarUserId;
             return await _leaveRepository.UpdateAsync(id, leave);
@@ -403,7 +403,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 }
                 else
                 {
-                 
+
                     filter.EmployeeIds = employeeIds;
                 }
             }
@@ -411,8 +411,22 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await GetFilteredLeavesAsync(filter);
         }
 
-        // ── Replace the existing MapToResponseDtoAsync method in LeaveService.cs ──
-        // The rest of the file stays exactly the same.
+        public async Task<Dictionary<string, int>> GetMyLeaveStatisticsByStatusAsync(string userEmail)
+        {
+            var user = await _userRepository.GetByEmailAsync(userEmail);
+            if (user == null) return new Dictionary<string, int>();
+
+            var employee = await _employeeRepository.GetByUserIdAsync(user.Id);
+            if (employee == null) return new Dictionary<string, int>();
+
+            var statistics = new Dictionary<string, int>();
+            foreach (LeaveStatus status in Enum.GetValues(typeof(LeaveStatus)))
+            {
+                var leaves = await _leaveRepository.GetLeavesByEmployeeIdAsync(employee.Id);
+                statistics[status.ToString()] = leaves.Count(l => l.LeaveStatus == status);
+            }
+            return statistics;
+        }
 
         private async Task<LeaveResponseDto> MapToResponseDtoAsync(Leave leave)
         {
@@ -441,7 +455,11 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Id = leave.Id,
                 EmployeeId = leave.EmployeeId,
                 EmployeeCode = employee?.EmployeeCode,
-                EmployeeName = employee?.GetFullName(),   // uses default "mr" lang
+                EmployeeName = employee != null
+    ? (employee.GetFullName("mr") is { Length: > 0 } mr ? mr
+       : employee.GetFullName("en") is { Length: > 0 } en ? en
+       : employee.GetFullName("hi"))
+    : null,
                 LeaveTypeId = leave.LeaveTypeId,
                 LeaveTypeName = leaveType?.Name,
                 LeaveTypeCode = leaveType?.Code,

@@ -52,10 +52,27 @@ namespace AttendanceManagementSystem.Controllers
         }
 
         [HttpPost("filter")]
-        public async Task<ActionResult<ApiResponseDto<PagedResultDto<LeaveResponseDto>>>> GetFilteredLeaves([FromBody] LeaveFilterDto filter)
+        public async Task<ActionResult<ApiResponseDto<PagedResultDto<LeaveResponseDto>>>> GetFilteredLeaves(
+    [FromBody] LeaveFilterDto filter)
         {
-            var result = await _leaveService.GetFilteredLeavesAsync(filter);
-            return Ok(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.SuccessResponse(result));
+            var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+            bool isPrivileged = roles.Any(r =>
+                r is "Admin" or "Tehsildar" or "NayabTehsildar" or "HR");
+
+            if (!isPrivileged)
+            {
+                var email = User.FindFirst(ClaimTypes.Email)?.Value
+                         ?? User.FindFirst("email")?.Value;
+                if (string.IsNullOrEmpty(email))
+                    return Unauthorized(ApiResponseDto<PagedResultDto<LeaveResponseDto>>
+                        .ErrorResponse("Not authenticated"));
+
+                var result = await _leaveService.GetMyLeavesAsync(filter, email);
+                return Ok(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.SuccessResponse(result));
+            }
+
+            var adminResult = await _leaveService.GetFilteredLeavesAsync(filter);
+            return Ok(ApiResponseDto<PagedResultDto<LeaveResponseDto>>.SuccessResponse(adminResult));
         }
 
         [HttpPost("my-leaves")]
@@ -120,6 +137,19 @@ namespace AttendanceManagementSystem.Controllers
                 return NotFound(ApiResponseDto<bool>.ErrorResponse("Leave not found or cannot be deleted"));
 
             return Ok(ApiResponseDto<bool>.SuccessResponse(true, "Leave deleted successfully"));
+        }
+
+        [HttpGet("statistics/my-status")]
+        public async Task<ActionResult<ApiResponseDto<Dictionary<string, int>>>> GetMyLeaveStatisticsByStatus()
+        {
+            var email = User.FindFirst(ClaimTypes.Email)?.Value
+                     ?? User.FindFirst("email")?.Value;
+            if (string.IsNullOrEmpty(email))
+                return Unauthorized(ApiResponseDto<Dictionary<string, int>>
+                    .ErrorResponse("User not authenticated"));
+
+            var result = await _leaveService.GetMyLeaveStatisticsByStatusAsync(email);
+            return Ok(ApiResponseDto<Dictionary<string, int>>.SuccessResponse(result));
         }
 
         [HttpPatch("{id}/admin-approve")]

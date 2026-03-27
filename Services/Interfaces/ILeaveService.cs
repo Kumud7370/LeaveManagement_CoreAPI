@@ -22,6 +22,7 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<bool> RejectLeaveAsync(string id, string rejectedBy, string rejectionReason);
         Task<bool> CancelLeaveAsync(string id, string cancelledBy, string cancellationReason);
         Task<Dictionary<string, int>> GetLeaveStatisticsByStatusAsync();
+        Task<Dictionary<string, int>> GetMyLeaveStatisticsByStatusAsync(string userEmail);
         Task<int> GetRemainingLeaveDaysAsync(string employeeId, string leaveTypeId, int year);
         Task<bool> ValidateLeaveRequestAsync(string employeeId, string leaveTypeId, DateTime startDate, DateTime endDate, string? excludeLeaveId = null);
         

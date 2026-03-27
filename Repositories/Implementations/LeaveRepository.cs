@@ -21,7 +21,12 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filterBuilder.Eq(x => x.IsDeleted, false)
             };
 
-            if (!string.IsNullOrWhiteSpace(filter.EmployeeId))
+            if (filter.EmployeeIds != null && filter.EmployeeIds.Any())
+            {
+                filters.Add(filterBuilder.In(x => x.EmployeeId, filter.EmployeeIds));
+            }
+
+            else if (!string.IsNullOrWhiteSpace(filter.EmployeeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.EmployeeId, filter.EmployeeId));
             }
