@@ -224,6 +224,23 @@ namespace AttendanceManagementSystem.Controllers
             return Ok(ApiResponseDto<List<EmployeeResponseDto>>.SuccessResponse(result));
         }
 
+        // ── My Profile (any authenticated user) ──────────────────────────────
+        [HttpGet("me")]
+        // No [Authorize(Roles=...)] — any authenticated employee can call this
+        public async Task<ActionResult<ApiResponseDto<EmployeeResponseDto>>> GetMyProfile()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized(ApiResponseDto<EmployeeResponseDto>.ErrorResponse("User not authenticated"));
+
+            // Look up employee by their linked userId
+            var result = await _employeeService.GetEmployeeByUserIdAsync(userId);
+            if (result == null)
+                return NotFound(ApiResponseDto<EmployeeResponseDto>.ErrorResponse("Employee profile not found for this user"));
+
+            return Ok(ApiResponseDto<EmployeeResponseDto>.SuccessResponse(result));
+        }
+
         // ── Statistics ────────────────────────────────────────────────────────
         [HttpGet("statistics/status")]
         [Authorize(Roles = "Admin,Tehsildar,NayabTehsildar")]

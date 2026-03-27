@@ -17,6 +17,8 @@ namespace AttendanceManagementSystem.Services.Interfaces
         Task<bool> DeleteEmployeeAsync(string id, string deletedBy);
         Task<bool> ChangeEmployeeStatusAsync(string id, Models.Enums.EmployeeStatus status, string updatedBy);
         Task<Dictionary<string, int>> GetEmployeeStatisticsByStatusAsync();
+
+        Task<EmployeeResponseDto?> GetEmployeeByUserIdAsync(string userId);
         Task<EmployeeResponseDto?> ReassignEmployeeAsync(string id, ReassignEmployeeDto dto, string changedBy);
         Task<List<AssignmentHistoryResponseDto>> GetAssignmentHistoryAsync(string employeeId);
         Task<BulkReassignResultDto> BulkReassignEmployeesAsync(BulkReassignEmployeeDto dto, string changedBy);

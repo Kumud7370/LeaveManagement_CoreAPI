@@ -21,10 +21,13 @@ namespace AttendanceManagementSystem.Models.DTOs.Leave
         public DateTime AppliedDate { get; set; }
        public string? AdminApprovedBy { get; set; }
         public DateTime? AdminApprovedDate { get; set; }
+        public string? AdminApprovedByName { get; set; }
         public string? NayabApprovedBy { get; set; }
         public DateTime? NayabApprovedDate { get; set; }
+        public string? NayabApprovedByName { get; set; }
         public string? TehsildarApprovedBy { get; set; }
         public DateTime? TehsildarApprovedDate { get; set; }
+        public string? TehsildarApprovedByName { get; set; }
         public string? ApprovedBy { get; set; }
         public string? ApprovedByName { get; set; }
         public DateTime? ApprovedDate { get; set; }

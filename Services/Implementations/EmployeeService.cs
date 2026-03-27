@@ -132,6 +132,12 @@ namespace AttendanceManagementSystem.Services.Implementations
             return result;
         }
 
+        public async Task<EmployeeResponseDto?> GetEmployeeByUserIdAsync(string userId)
+        {
+            var employee = await _employeeRepository.GetByUserIdAsync(userId);
+            return employee != null ? await MapToResponseDtoAsync(employee) : null;
+        }
+
         public async Task<EmployeeResponseDto?> UpdateEmployeeAsync(string id, UpdateEmployeeDto dto, string updatedBy)
         {
             var employee = await _employeeRepository.GetByIdAsync(id);

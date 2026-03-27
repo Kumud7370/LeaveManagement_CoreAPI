@@ -280,7 +280,7 @@ namespace AttendanceManagementSystem.Services.Implementations
             leave.LeaveStatus = LeaveStatus.FullyApproved;
             leave.TehsildarApprovedBy = tehsildarUserId;
             leave.TehsildarApprovedDate = DateTime.UtcNow;
-            leave.ApprovedBy = tehsildarUserId;        
+            leave.ApprovedBy = tehsildarUserId;
             leave.ApprovedDate = DateTime.UtcNow;
             leave.UpdatedBy = tehsildarUserId;
             return await _leaveRepository.UpdateAsync(id, leave);
@@ -403,7 +403,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 }
                 else
                 {
-                 
+
                     filter.EmployeeIds = employeeIds;
                 }
             }
@@ -411,35 +411,55 @@ namespace AttendanceManagementSystem.Services.Implementations
             return await GetFilteredLeavesAsync(filter);
         }
 
+        public async Task<Dictionary<string, int>> GetMyLeaveStatisticsByStatusAsync(string userEmail)
+        {
+            var user = await _userRepository.GetByEmailAsync(userEmail);
+            if (user == null) return new Dictionary<string, int>();
+
+            var employee = await _employeeRepository.GetByUserIdAsync(user.Id);
+            if (employee == null) return new Dictionary<string, int>();
+
+            var statistics = new Dictionary<string, int>();
+            foreach (LeaveStatus status in Enum.GetValues(typeof(LeaveStatus)))
+            {
+                var leaves = await _leaveRepository.GetLeavesByEmployeeIdAsync(employee.Id);
+                statistics[status.ToString()] = leaves.Count(l => l.LeaveStatus == status);
+            }
+            return statistics;
+        }
+
         private async Task<LeaveResponseDto> MapToResponseDtoAsync(Leave leave)
         {
             var employee = await _employeeRepository.GetByIdAsync(leave.EmployeeId);
             var leaveType = await _leaveTypeRepository.GetByIdAsync(leave.LeaveTypeId);
 
-            string? approvedByName = null;
-            if (!string.IsNullOrEmpty(leave.ApprovedBy))
+            // Helper: look up a user by their ID and return their full name
+            async Task<string?> GetUserName(string? userId)
             {
-                var approver = await _userRepository.GetByIdAsync(leave.ApprovedBy);
-                approvedByName = approver != null
-                    ? $"{approver.FirstName} {approver.LastName}".Trim()
-                    : null;
+                if (string.IsNullOrEmpty(userId)) return null;
+                var user = await _userRepository.GetByIdAsync(userId);
+                return user != null ? $"{user.FirstName} {user.LastName}".Trim() : null;
             }
 
-            string? rejectedByName = null;
-            if (!string.IsNullOrEmpty(leave.RejectedBy))
-            {
-                var rejector = await _userRepository.GetByIdAsync(leave.RejectedBy);
-                rejectedByName = rejector != null
-                    ? $"{rejector.FirstName} {rejector.LastName}".Trim()
-                    : null;
-            }
+            // Resolve all approver names in parallel for performance
+            var adminNameTask = GetUserName(leave.AdminApprovedBy);
+            var nayabNameTask = GetUserName(leave.NayabApprovedBy);
+            var tehsilNameTask = GetUserName(leave.TehsildarApprovedBy);
+            var approvedNameTask = GetUserName(leave.ApprovedBy);
+            var rejectedNameTask = GetUserName(leave.RejectedBy);
+
+            await Task.WhenAll(adminNameTask, nayabNameTask, tehsilNameTask, approvedNameTask, rejectedNameTask);
 
             return new LeaveResponseDto
             {
                 Id = leave.Id,
                 EmployeeId = leave.EmployeeId,
                 EmployeeCode = employee?.EmployeeCode,
-                EmployeeName = employee?.GetFullName(),
+                EmployeeName = employee != null
+    ? (employee.GetFullName("mr") is { Length: > 0 } mr ? mr
+       : employee.GetFullName("en") is { Length: > 0 } en ? en
+       : employee.GetFullName("hi"))
+    : null,
                 LeaveTypeId = leave.LeaveTypeId,
                 LeaveTypeName = leaveType?.Name,
                 LeaveTypeCode = leaveType?.Code,
@@ -451,19 +471,28 @@ namespace AttendanceManagementSystem.Services.Implementations
                 LeaveStatus = leave.LeaveStatus,
                 LeaveStatusName = leave.LeaveStatus.ToString(),
                 AppliedDate = leave.AppliedDate,
+
                 AdminApprovedBy = leave.AdminApprovedBy,
                 AdminApprovedDate = leave.AdminApprovedDate,
+                AdminApprovedByName = await adminNameTask,        // ← NEW
+
                 NayabApprovedBy = leave.NayabApprovedBy,
                 NayabApprovedDate = leave.NayabApprovedDate,
+                NayabApprovedByName = await nayabNameTask,        // ← NEW
+
                 TehsildarApprovedBy = leave.TehsildarApprovedBy,
                 TehsildarApprovedDate = leave.TehsildarApprovedDate,
+                TehsildarApprovedByName = await tehsilNameTask,   // ← NEW
+
                 ApprovedBy = leave.ApprovedBy,
-                ApprovedByName = approvedByName,
+                ApprovedByName = await approvedNameTask,
                 ApprovedDate = leave.ApprovedDate,
+
                 RejectedBy = leave.RejectedBy,
-                RejectedByName = rejectedByName,
+                RejectedByName = await rejectedNameTask,
                 RejectedDate = leave.RejectedDate,
                 RejectionReason = leave.RejectionReason,
+
                 CancelledDate = leave.CancelledDate,
                 CancellationReason = leave.CancellationReason,
                 IsEmergencyLeave = leave.IsEmergencyLeave,

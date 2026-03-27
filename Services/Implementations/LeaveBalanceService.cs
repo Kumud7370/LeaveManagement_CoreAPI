@@ -510,7 +510,12 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Id = balance.Id,
                 EmployeeId = balance.EmployeeId,
                 EmployeeCode = employee?.EmployeeCode,
-                EmployeeName = employee?.GetFullName(),
+                EmployeeName = new[] {
+                employee.GetFullName("mr"),
+                employee.GetFullName("en"),
+                employee.GetFullName("hi")
+                }.FirstOrDefault(n => !string.IsNullOrWhiteSpace(n))
+                ?? employee.EmployeeCode,
                 LeaveTypeId = balance.LeaveTypeId,
                 LeaveTypeName = leaveType?.Name,
                 LeaveTypeCode = leaveType?.Code,
