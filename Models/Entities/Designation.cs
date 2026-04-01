@@ -11,6 +11,15 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("designationName")]
         public string DesignationName { get; set; } = string.Empty;
 
+        [BsonElement("designationNameMr")]
+        public string? DesignationNameMr { get; set; }
+
+        [BsonElement("designationNameEn")]
+        public string? DesignationNameEn { get; set; }
+
+        [BsonElement("designationNameHi")]
+        public string? DesignationNameHi { get; set; }
+
         [BsonElement("description")]
         public string? Description { get; set; }
 
