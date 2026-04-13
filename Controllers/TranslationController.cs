@@ -19,7 +19,7 @@ namespace AttendanceManagementSystem.Controllers
             _collection = database.GetCollection<Translation>("translations");
         }
 
-        // GET /api/Translation/flat?lang=mr  — used by Angular LanguageService
+        
         [HttpGet("flat")]
         [AllowAnonymous]
         public async Task<ActionResult<Dictionary<string, string>>> GetFlat(

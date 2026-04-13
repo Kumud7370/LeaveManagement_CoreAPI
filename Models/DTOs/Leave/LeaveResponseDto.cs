@@ -8,10 +8,17 @@ namespace AttendanceManagementSystem.Models.DTOs.Leave
         public string EmployeeId { get; set; } = string.Empty;
         public string? EmployeeCode { get; set; }
         public string? EmployeeName { get; set; }
+        public string? DesignationName { get; set; }
+        public string? DesignationNameMr { get; set; }
+        public string? DepartmentId { get; set; }
+        public string? DepartmentName { get; set; }
+        public string? DepartmentNameMr { get; set; }
         public string LeaveTypeId { get; set; } = string.Empty;
         public string? LeaveTypeName { get; set; }
+        public string? LeaveTypeNameMr { get; set; }
         public string? LeaveTypeCode { get; set; }
         public string? LeaveTypeColor { get; set; }
+        public bool IsPaidLeave { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
         public decimal TotalDays { get; set; }

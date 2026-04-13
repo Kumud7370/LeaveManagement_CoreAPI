@@ -520,6 +520,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 LeaveTypeName = leaveType?.Name,
                 LeaveTypeCode = leaveType?.Code,
                 LeaveTypeColor = leaveType?.Color,
+                IsPaidLeave = leaveType?.IsPaidLeave ?? true,
                 Year = balance.Year,
                 TotalAllocated = balance.TotalAllocated,
                 Consumed = balance.Consumed,

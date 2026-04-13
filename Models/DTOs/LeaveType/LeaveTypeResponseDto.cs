@@ -4,8 +4,11 @@
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public string? NameMr { get; set; }
+        public string? NameHi { get; set; }
         public string Code { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public bool IsPaidLeave { get; set; }
         public int MaxDaysPerYear { get; set; }
         public bool IsCarryForward { get; set; }
         public int MaxCarryForwardDays { get; set; }

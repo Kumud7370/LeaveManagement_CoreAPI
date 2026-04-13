@@ -170,11 +170,9 @@ namespace AttendanceManagementSystem.Services.Implementations
                 if (department != null)
                 {
                     departmentName = department.DepartmentName;
-                    // Safely read trilingual fields if they exist on Department entity
-                    var deptType = department.GetType();
-                    departmentNameMr = deptType.GetProperty("DepartmentNameMr")?.GetValue(department) as string ?? department.DepartmentName;
-                    departmentNameEn = deptType.GetProperty("DepartmentNameEn")?.GetValue(department) as string ?? department.DepartmentName;
-                    departmentNameHi = deptType.GetProperty("DepartmentNameHi")?.GetValue(department) as string ?? department.DepartmentName;
+                    departmentNameMr = department.DepartmentNameMr;
+                    departmentNameEn = department.DepartmentName;   
+                    departmentNameHi = department.DepartmentNameHi;
                 }
             }
 
