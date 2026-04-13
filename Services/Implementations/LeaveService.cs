@@ -1,4 +1,542 @@
-﻿using AttendanceManagementSystem.Models.DTOs.Common;
+﻿//using AttendanceManagementSystem.Models.DTOs.Common;
+//using AttendanceManagementSystem.Models.DTOs.Leave;
+//using AttendanceManagementSystem.Models.Entities;
+//using AttendanceManagementSystem.Models.Enums;
+//using AttendanceManagementSystem.Repositories.Implementations;
+//using AttendanceManagementSystem.Repositories.Interfaces;
+//using AttendanceManagementSystem.Services.Interfaces;
+
+//namespace AttendanceManagementSystem.Services.Implementations
+//{
+//    public class LeaveService : ILeaveService
+//    {
+//        private readonly ILeaveRepository _leaveRepository;
+//        private readonly ILeaveTypeRepository _leaveTypeRepository;
+//        private readonly IEmployeeRepository _employeeRepository;
+//        private readonly ILeaveBalanceRepository _leaveBalanceRepository;
+//        private readonly IUserRepository _userRepository;
+//        private readonly IDesignationRepository _designationRepository;
+//        private readonly IDepartmentRepository _departmentRepository;
+//        private readonly INotificationService _notificationService;
+
+//        public LeaveService(
+//            ILeaveRepository leaveRepository,
+//            ILeaveTypeRepository leaveTypeRepository,
+//            IEmployeeRepository employeeRepository,
+//            ILeaveBalanceRepository leaveBalanceRepository,
+//            IUserRepository userRepository, 
+//            IDesignationRepository designationRepository,
+//            IDepartmentRepository departmentRepository,
+//            INotificationService notificationService)
+//        {
+//            _leaveRepository = leaveRepository;
+//            _leaveTypeRepository = leaveTypeRepository;
+//            _employeeRepository = employeeRepository;
+//            _leaveBalanceRepository = leaveBalanceRepository;
+//            _userRepository = userRepository;
+//            _designationRepository = designationRepository;
+//            _departmentRepository = departmentRepository;
+//            _notificationService = notificationService;
+//        }
+
+//        public async Task<LeaveResponseDto?> CreateLeaveAsync(CreateLeaveDto dto, string createdBy)
+//        {
+//            var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
+//            if (employee == null)
+//                return null;
+
+
+//            var leaveType = await _leaveTypeRepository.GetByIdAsync(dto.LeaveTypeId);
+//            if (leaveType == null || !leaveType.IsActive)
+//                return null;
+
+//            if (await _leaveRepository.HasOverlappingLeaveAsync(dto.EmployeeId, dto.StartDate, dto.EndDate))
+//                return null;
+
+//            var year = dto.StartDate.Year;
+//            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
+//                dto.EmployeeId, dto.LeaveTypeId, year);
+
+//            if (leaveBalance == null)
+//                return null;
+
+//            if (!leaveBalance.HasSufficientBalance(dto.TotalDays))
+//                return null;
+
+//            var leave = new Leave
+//            {
+//                EmployeeId = dto.EmployeeId,
+//                LeaveTypeId = dto.LeaveTypeId,
+//                StartDate = dto.StartDate,
+//                EndDate = dto.EndDate,
+//                TotalDays = dto.TotalDays,
+//                Reason = dto.Reason,
+//                IsEmergencyLeave = dto.IsEmergencyLeave,
+//                AttachmentUrl = dto.AttachmentUrl,
+//                AppliedDate = DateTime.UtcNow,
+//                LeaveStatus = LeaveStatus.Pending,
+//                CreatedBy = createdBy
+//            };
+
+//            var createdLeave = await _leaveRepository.CreateAsync(leave);
+//            return await MapToResponseDtoAsync(createdLeave);
+//        }
+
+//        public async Task<LeaveResponseDto?> GetLeaveByIdAsync(string id)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+//            return leave != null ? await MapToResponseDtoAsync(leave) : null;
+//        }
+
+//        public async Task<PagedResultDto<LeaveResponseDto>> GetFilteredLeavesAsync(LeaveFilterDto filter)
+//        {
+//            var (items, totalCount) = await _leaveRepository.GetFilteredLeavesAsync(filter);
+
+//            var leaveDtos = new List<LeaveResponseDto>();
+//            foreach (var leave in items)
+//            {
+//                leaveDtos.Add(await MapToResponseDtoAsync(leave));
+//            }
+
+//            return new PagedResultDto<LeaveResponseDto>(
+//                leaveDtos,
+//                totalCount,
+//                filter.PageNumber,
+//                filter.PageSize
+//            );
+//        }
+
+//        public async Task<PagedResultDto<LeaveResponseDto>> GetMyLeavesAsync(LeaveFilterDto filter, string userEmail)
+//        {
+//            var user = await _userRepository.GetByEmailAsync(userEmail);
+//            if (user == null)
+//                return new PagedResultDto<LeaveResponseDto>(
+//                    new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+
+//            var employee = await _employeeRepository.GetByUserIdAsync(user.Id);
+//            if (employee == null)
+//                return new PagedResultDto<LeaveResponseDto>(
+//                    new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+
+//            filter.EmployeeId = employee.Id;
+
+//            var (items, totalCount) = await _leaveRepository.GetFilteredLeavesAsync(filter);
+
+//            var leaveDtos = new List<LeaveResponseDto>();
+//            foreach (var leave in items)
+//                leaveDtos.Add(await MapToResponseDtoAsync(leave));
+
+//            return new PagedResultDto<LeaveResponseDto>(
+//                leaveDtos, totalCount, filter.PageNumber, filter.PageSize);
+//        }
+
+//        public async Task<List<LeaveResponseDto>> GetLeavesByEmployeeIdAsync(string employeeId)
+//        {
+//            var leaves = await _leaveRepository.GetLeavesByEmployeeIdAsync(employeeId);
+//            var leaveDtos = new List<LeaveResponseDto>();
+
+//            foreach (var leave in leaves)
+//            {
+//                leaveDtos.Add(await MapToResponseDtoAsync(leave));
+//            }
+
+//            return leaveDtos;
+//        }
+
+//        public async Task<List<LeaveResponseDto>> GetPendingLeavesAsync()
+//        {
+//            var leaves = await _leaveRepository.GetPendingLeavesAsync();
+//            var leaveDtos = new List<LeaveResponseDto>();
+
+//            foreach (var leave in leaves)
+//            {
+//                leaveDtos.Add(await MapToResponseDtoAsync(leave));
+//            }
+
+//            return leaveDtos;
+//        }
+
+//        public async Task<List<LeaveResponseDto>> GetUpcomingLeavesAsync(int days = 7)
+//        {
+//            var leaves = await _leaveRepository.GetUpcomingLeavesAsync(days);
+//            var leaveDtos = new List<LeaveResponseDto>();
+
+//            foreach (var leave in leaves)
+//            {
+//                leaveDtos.Add(await MapToResponseDtoAsync(leave));
+//            }
+
+//            return leaveDtos;
+//        }
+
+//        public async Task<LeaveResponseDto?> UpdateLeaveAsync(string id, UpdateLeaveDto dto, string updatedBy)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+//            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending)
+//                return null;
+
+//            var originalTotalDays = leave.TotalDays;
+//            var originalLeaveTypeId = leave.LeaveTypeId;
+
+//            if (dto.StartDate.HasValue)
+//                leave.StartDate = dto.StartDate.Value;
+
+//            if (dto.EndDate.HasValue)
+//                leave.EndDate = dto.EndDate.Value;
+
+//            if (dto.TotalDays.HasValue)
+//                leave.TotalDays = dto.TotalDays.Value;
+
+//            if (!string.IsNullOrEmpty(dto.Reason))
+//                leave.Reason = dto.Reason;
+
+//            if (dto.IsEmergencyLeave.HasValue)
+//                leave.IsEmergencyLeave = dto.IsEmergencyLeave.Value;
+
+//            if (dto.AttachmentUrl != null)
+//                leave.AttachmentUrl = dto.AttachmentUrl;
+
+//            if (dto.StartDate.HasValue || dto.EndDate.HasValue)
+//            {
+//                if (await _leaveRepository.HasOverlappingLeaveAsync(leave.EmployeeId, leave.StartDate, leave.EndDate, id))
+//                    return null;
+//            }
+
+//            if (dto.TotalDays.HasValue && dto.TotalDays.Value != originalTotalDays)
+//            {
+//                var year = leave.StartDate.Year;
+//                var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
+//                    leave.EmployeeId, leave.LeaveTypeId, year);
+
+//                if (leaveBalance == null)
+//                    return null;
+
+//                if (!leaveBalance.HasSufficientBalance(leave.TotalDays))
+//                    return null;
+//            }
+
+//            leave.UpdatedBy = updatedBy;
+
+//            var updated = await _leaveRepository.UpdateAsync(id, leave);
+//            return updated ? await MapToResponseDtoAsync(leave) : null;
+//        }
+
+//        public async Task<bool> DeleteLeaveAsync(string id, string deletedBy)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+//            if (leave == null)
+//                return false;
+
+//            // If approved, restore the leave balance first
+//            if (leave.LeaveStatus == LeaveStatus.FullyApproved)
+//            {
+//                var year = leave.StartDate.Year;
+//                var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
+//                    leave.EmployeeId, leave.LeaveTypeId, year);
+
+//                if (leaveBalance != null)
+//                {
+//                    leaveBalance.RestoreLeave(leave.TotalDays);
+//                    await _leaveBalanceRepository.UpdateAsync(leaveBalance.Id, leaveBalance);
+//                }
+//            }
+
+//            leave.UpdatedBy = deletedBy;
+//            leave.DeletedAt = DateTime.UtcNow;
+
+//            return await _leaveRepository.DeleteAsync(id);
+//        }
+
+//        public async Task<bool> AdminApproveLeaveAsync(string id, string adminUserId)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+//            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending)
+//                return false;
+
+//            leave.LeaveStatus = LeaveStatus.AdminApproved;
+//            leave.AdminApprovedBy = adminUserId;
+//            leave.AdminApprovedDate = DateTime.UtcNow;
+//            leave.UpdatedBy = adminUserId;
+//            return await _leaveRepository.UpdateAsync(id, leave);
+//        }
+
+//        public async Task<bool> NayabApproveLeaveAsync(string id, string nayabUserId)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+//            if (leave == null || leave.LeaveStatus != LeaveStatus.AdminApproved)
+//                return false;
+
+//            leave.LeaveStatus = LeaveStatus.NayabApproved;
+//            leave.NayabApprovedBy = nayabUserId;
+//            leave.NayabApprovedDate = DateTime.UtcNow;
+//            leave.UpdatedBy = nayabUserId;
+//            return await _leaveRepository.UpdateAsync(id, leave);
+//        }
+
+//        public async Task<bool> TehsildarApproveLeaveAsync(string id, string tehsildarUserId)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+//            if (leave == null || leave.LeaveStatus != LeaveStatus.NayabApproved)
+//                return false;
+
+//            // Balance is only consumed at final approval
+//            var leaveBalance = await _leaveBalanceRepository
+//                .GetByEmployeeAndLeaveTypeAsync(leave.EmployeeId, leave.LeaveTypeId, leave.StartDate.Year);
+//            if (leaveBalance == null || !leaveBalance.ConsumeLeave(leave.TotalDays))
+//                return false;
+
+//            await _leaveBalanceRepository.UpdateAsync(leaveBalance.Id, leaveBalance);
+
+//            leave.LeaveStatus = LeaveStatus.FullyApproved;
+//            leave.TehsildarApprovedBy = tehsildarUserId;
+//            leave.TehsildarApprovedDate = DateTime.UtcNow;
+//            leave.ApprovedBy = tehsildarUserId;
+//            leave.ApprovedDate = DateTime.UtcNow;
+//            leave.UpdatedBy = tehsildarUserId;
+//            return await _leaveRepository.UpdateAsync(id, leave);
+//        }
+
+//        // Reject — any approver can reject at their stage
+//        public async Task<bool> RejectLeaveAsync(string id, string rejectedBy, string rejectionReason)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+
+//            var rejectableStatuses = new[]
+//            {
+//        LeaveStatus.Pending,
+//        LeaveStatus.AdminApproved,
+//        LeaveStatus.NayabApproved
+//    };
+
+//            if (leave == null || !rejectableStatuses.Contains(leave.LeaveStatus))
+//                return false;
+
+//            leave.LeaveStatus = LeaveStatus.Rejected;
+//            leave.RejectedBy = rejectedBy;
+//            leave.RejectedDate = DateTime.UtcNow;
+//            leave.RejectionReason = rejectionReason;
+//            leave.UpdatedBy = rejectedBy;
+
+//            return await _leaveRepository.UpdateAsync(id, leave);
+//        }
+
+//        public async Task<bool> CancelLeaveAsync(string id, string cancelledBy, string cancellationReason)
+//        {
+//            var leave = await _leaveRepository.GetByIdAsync(id);
+//            if (leave == null || !leave.CanBeCancelled())
+//                return false;
+
+//            if (leave.LeaveStatus == LeaveStatus.FullyApproved)
+//            {
+//                var year = leave.StartDate.Year;
+//                var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
+//                    leave.EmployeeId, leave.LeaveTypeId, year);
+
+//                if (leaveBalance != null)
+//                {
+//                    leaveBalance.RestoreLeave(leave.TotalDays);
+//                    await _leaveBalanceRepository.UpdateAsync(leaveBalance.Id, leaveBalance);
+//                }
+//            }
+
+//            leave.LeaveStatus = LeaveStatus.Cancelled;
+//            leave.CancelledDate = DateTime.UtcNow;
+//            leave.CancellationReason = cancellationReason;
+//            leave.UpdatedBy = cancelledBy;
+
+//            return await _leaveRepository.UpdateAsync(id, leave);
+//        }
+
+//        public async Task<Dictionary<string, int>> GetLeaveStatisticsByStatusAsync()
+//        {
+//            var statistics = new Dictionary<string, int>();
+
+//            foreach (LeaveStatus status in Enum.GetValues(typeof(LeaveStatus)))
+//            {
+//                var leaves = await _leaveRepository.GetLeavesByStatusAsync(status);
+//                statistics[status.ToString()] = leaves.Count;
+//            }
+
+//            return statistics;
+//        }
+
+//        public async Task<int> GetRemainingLeaveDaysAsync(string employeeId, string leaveTypeId, int year)
+//        {
+//            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
+//                employeeId, leaveTypeId, year);
+
+//            if (leaveBalance == null)
+//                return 0;
+
+//            return (int)Math.Floor(leaveBalance.Available);
+//        }
+
+//        public async Task<bool> ValidateLeaveRequestAsync(string employeeId, string leaveTypeId, DateTime startDate, DateTime endDate, string? excludeLeaveId = null)
+//        {
+//            if (await _leaveRepository.HasOverlappingLeaveAsync(employeeId, startDate, endDate, excludeLeaveId))
+//                return false;
+
+//            var leaveType = await _leaveTypeRepository.GetByIdAsync(leaveTypeId);
+//            if (leaveType == null || !leaveType.IsActive)
+//                return false;
+
+//            var totalDays = (decimal)(endDate - startDate).TotalDays + 1;
+//            var year = startDate.Year;
+
+//            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
+//                employeeId, leaveTypeId, year);
+
+//            if (leaveBalance == null)
+//                return false;
+
+//            return leaveBalance.HasSufficientBalance(totalDays);
+//        }
+
+//        public async Task<PagedResultDto<LeaveResponseDto>> GetDepartmentLeavesAsync(LeaveFilterDto filter)
+//        {
+//            // If DepartmentId is set, first get all employee IDs in that department
+//            if (!string.IsNullOrEmpty(filter.DepartmentId))
+//            {
+//                var employees = await _employeeRepository.GetEmployeesByDepartmentAsync(filter.DepartmentId);
+//                var employeeIds = employees.Select(e => e.Id).ToList();
+
+//                // If no employees in dept, return empty
+//                if (!employeeIds.Any())
+//                    return new PagedResultDto<LeaveResponseDto>(
+//                        new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+
+//                if (!string.IsNullOrEmpty(filter.EmployeeId))
+//                {
+//                    if (!employeeIds.Contains(filter.EmployeeId))
+//                        return new PagedResultDto<LeaveResponseDto>(
+//                            new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+//                }
+//                else
+//                {
+
+//                    filter.EmployeeIds = employeeIds;
+//                }
+//            }
+
+//            return await GetFilteredLeavesAsync(filter);
+//        }
+
+//        public async Task<Dictionary<string, int>> GetMyLeaveStatisticsByStatusAsync(string userEmail)
+//        {
+//            var user = await _userRepository.GetByEmailAsync(userEmail);
+//            if (user == null) return new Dictionary<string, int>();
+
+//            var employee = await _employeeRepository.GetByUserIdAsync(user.Id);
+//            if (employee == null) return new Dictionary<string, int>();
+
+//            var statistics = new Dictionary<string, int>();
+//            foreach (LeaveStatus status in Enum.GetValues(typeof(LeaveStatus)))
+//            {
+//                var leaves = await _leaveRepository.GetLeavesByEmployeeIdAsync(employee.Id);
+//                statistics[status.ToString()] = leaves.Count(l => l.LeaveStatus == status);
+//            }
+//            return statistics;
+//        }
+
+//        private async Task<LeaveResponseDto> MapToResponseDtoAsync(Leave leave)
+//        {
+//            var employee = await _employeeRepository.GetByIdAsync(leave.EmployeeId);
+//            var leaveType = await _leaveTypeRepository.GetByIdAsync(leave.LeaveTypeId);
+
+//            Designation? designation = null;
+//            if (employee != null && !string.IsNullOrEmpty(employee.DesignationId))
+//            {
+//                designation = await _designationRepository.GetByIdAsync(employee.DesignationId);
+//            }
+
+//            // ── Fetch department ──────────────────────────────────────────────
+//            Department? department = null;
+//            if (employee != null && !string.IsNullOrEmpty(employee.DepartmentId))
+//            {
+//                if (Guid.TryParse(employee.DepartmentId, out var deptGuid))
+//                {
+//                    department = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
+//                }
+//            }
+
+//            // Helper: look up a user by their ID and return their full name
+//            async Task<string?> GetUserName(string? userId)
+//            {
+//                if (string.IsNullOrEmpty(userId)) return null;
+//                var user = await _userRepository.GetByIdAsync(userId);
+//                return user != null ? $"{user.FirstName} {user.LastName}".Trim() : null;
+//            }
+
+//            // Resolve all approver names in parallel for performance
+//            var adminNameTask = GetUserName(leave.AdminApprovedBy);
+//            var nayabNameTask = GetUserName(leave.NayabApprovedBy);
+//            var tehsilNameTask = GetUserName(leave.TehsildarApprovedBy);
+//            var approvedNameTask = GetUserName(leave.ApprovedBy);
+//            var rejectedNameTask = GetUserName(leave.RejectedBy);
+
+//            await Task.WhenAll(adminNameTask, nayabNameTask, tehsilNameTask, approvedNameTask, rejectedNameTask);
+
+//            return new LeaveResponseDto
+//            {
+//                Id = leave.Id,
+//                EmployeeId = leave.EmployeeId,
+//                EmployeeCode = employee?.EmployeeCode,
+//                EmployeeName = employee != null? (employee.GetFullName("mr") is { Length: > 0 } mr ? mr: employee.GetFullName("en") is { Length: > 0 } en ? en : employee.GetFullName("hi")) : null,
+//                DesignationName = designation?.DesignationName,
+//                DesignationNameMr = designation?.DesignationNameMr ?? designation?.DesignationName,
+//                DepartmentId = department?.DepartmentId.ToString(),
+//                DepartmentName = department?.DepartmentName ?? department?.DepartmentNameMr,
+//                DepartmentNameMr = department?.DepartmentNameMr ?? department?.DepartmentName,
+//                LeaveTypeId = leave.LeaveTypeId,
+//                LeaveTypeName = leaveType?.Name,
+//                LeaveTypeNameMr = leaveType?.NameMr,
+//                LeaveTypeCode = leaveType?.Code,
+//                LeaveTypeColor = leaveType?.Color,
+//                IsPaidLeave = leaveType?.IsPaidLeave ?? true,
+//                StartDate = leave.StartDate,
+//                EndDate = leave.EndDate,
+//                TotalDays = leave.TotalDays,
+//                Reason = leave.Reason,
+//                LeaveStatus = leave.LeaveStatus,
+//                LeaveStatusName = leave.LeaveStatus.ToString(),
+//                AppliedDate = leave.AppliedDate,
+
+//                AdminApprovedBy = leave.AdminApprovedBy,
+//                AdminApprovedDate = leave.AdminApprovedDate,
+//                AdminApprovedByName = await adminNameTask,        
+
+//                NayabApprovedBy = leave.NayabApprovedBy,
+//                NayabApprovedDate = leave.NayabApprovedDate,
+//                NayabApprovedByName = await nayabNameTask,        
+
+//                TehsildarApprovedBy = leave.TehsildarApprovedBy,
+//                TehsildarApprovedDate = leave.TehsildarApprovedDate,
+//                TehsildarApprovedByName = await tehsilNameTask,  
+
+//                ApprovedBy = leave.ApprovedBy,
+//                ApprovedByName = await approvedNameTask,
+//                ApprovedDate = leave.ApprovedDate,
+
+//                RejectedBy = leave.RejectedBy,
+//                RejectedByName = await rejectedNameTask,
+//                RejectedDate = leave.RejectedDate,
+//                RejectionReason = leave.RejectionReason,
+
+//                CancelledDate = leave.CancelledDate,
+//                CancellationReason = leave.CancellationReason,
+//                IsEmergencyLeave = leave.IsEmergencyLeave,
+//                AttachmentUrl = leave.AttachmentUrl,
+//                IsActiveLeave = leave.IsActiveLeave(),
+//                CanBeCancelled = leave.CanBeCancelled(),
+//                CreatedAt = leave.CreatedAt,
+//                UpdatedAt = leave.UpdatedAt
+//            };
+//        }
+//    };
+//}
+
+
+using AttendanceManagementSystem.Models.DTOs.Common;
 using AttendanceManagementSystem.Models.DTOs.Leave;
 using AttendanceManagementSystem.Models.Entities;
 using AttendanceManagementSystem.Models.Enums;
@@ -15,30 +553,82 @@ namespace AttendanceManagementSystem.Services.Implementations
         private readonly IEmployeeRepository _employeeRepository;
         private readonly ILeaveBalanceRepository _leaveBalanceRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IDesignationRepository _designationRepository;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly INotificationService _notificationService;
 
         public LeaveService(
             ILeaveRepository leaveRepository,
             ILeaveTypeRepository leaveTypeRepository,
             IEmployeeRepository employeeRepository,
             ILeaveBalanceRepository leaveBalanceRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IDesignationRepository designationRepository,
+            IDepartmentRepository departmentRepository,
+            INotificationService notificationService)
         {
             _leaveRepository = leaveRepository;
             _leaveTypeRepository = leaveTypeRepository;
             _employeeRepository = employeeRepository;
             _leaveBalanceRepository = leaveBalanceRepository;
             _userRepository = userRepository;
+            _designationRepository = designationRepository;
+            _departmentRepository = departmentRepository;
+            _notificationService = notificationService;
         }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // WHY THIS WORKS:
+        //   • Employee.UserId  → null  (never set at creation time)
+        //   • User.EmployeeId  → null  (never set at creation time)
+        //   • Employee.Email == User.Email  ← this is ALWAYS true (same value
+        //     is used when creating both records via AdminManagementService)
+        //
+        // So the only reliable Employee→User link is: match on Email.
+        // NotificationController reads userId from JWT claim (ClaimTypes.NameIdentifier)
+        // which is User.Id — so we must return User.Id, not Employee.Id.
+        // ─────────────────────────────────────────────────────────────────────
+        private async Task<string?> GetUserIdForEmployeeAsync(string employeeId)
+        {
+            var employee = await _employeeRepository.GetByIdAsync(employeeId);
+            if (employee == null) return null;
+
+            // Try the direct link first (works if UserId was ever populated)
+            if (!string.IsNullOrEmpty(employee.UserId))
+                return employee.UserId;
+
+            // Try User.EmployeeId link (works if that was ever populated)
+            var userByEmpId = await _userRepository.GetByEmployeeIdAsync(employeeId);
+            if (userByEmpId != null)
+                return userByEmpId.Id;
+
+            // Fallback: match on email — guaranteed to work for all existing data
+            if (!string.IsNullOrEmpty(employee.Email))
+            {
+                var userByEmail = await _userRepository.GetByEmailAsync(employee.Email);
+                if (userByEmail != null)
+                    return userByEmail.Id;
+            }
+
+            return null;
+        }
+
+        // Notification failure must NEVER block a leave action.
+        private async Task TryNotifyAsync(Func<Task> notify)
+        {
+            try { await notify(); }
+            catch { /* swallow */ }
+        }
+
+        // ── CRUD ──────────────────────────────────────────────────────────────
 
         public async Task<LeaveResponseDto?> CreateLeaveAsync(CreateLeaveDto dto, string createdBy)
         {
             var employee = await _employeeRepository.GetByIdAsync(dto.EmployeeId);
-            if (employee == null)
-                return null;
+            if (employee == null) return null;
 
             var leaveType = await _leaveTypeRepository.GetByIdAsync(dto.LeaveTypeId);
-            if (leaveType == null || !leaveType.IsActive)
-                return null;
+            if (leaveType == null || !leaveType.IsActive) return null;
 
             if (await _leaveRepository.HasOverlappingLeaveAsync(dto.EmployeeId, dto.StartDate, dto.EndDate))
                 return null;
@@ -46,12 +636,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             var year = dto.StartDate.Year;
             var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
                 dto.EmployeeId, dto.LeaveTypeId, year);
-
-            if (leaveBalance == null)
-                return null;
-
-            if (!leaveBalance.HasSufficientBalance(dto.TotalDays))
-                return null;
+            if (leaveBalance == null) return null;
+            if (!leaveBalance.HasSufficientBalance(dto.TotalDays)) return null;
 
             var leave = new Leave
             {
@@ -69,6 +655,11 @@ namespace AttendanceManagementSystem.Services.Implementations
             };
 
             var createdLeave = await _leaveRepository.CreateAsync(leave);
+
+            var userId = await GetUserIdForEmployeeAsync(dto.EmployeeId);
+            if (userId != null)
+                await TryNotifyAsync(() => _notificationService.NotifyLeaveAppliedAsync(createdLeave, userId));
+
             return await MapToResponseDtoAsync(createdLeave);
         }
 
@@ -81,55 +672,41 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<PagedResultDto<LeaveResponseDto>> GetFilteredLeavesAsync(LeaveFilterDto filter)
         {
             var (items, totalCount) = await _leaveRepository.GetFilteredLeavesAsync(filter);
-
             var leaveDtos = new List<LeaveResponseDto>();
             foreach (var leave in items)
-            {
                 leaveDtos.Add(await MapToResponseDtoAsync(leave));
-            }
-
-            return new PagedResultDto<LeaveResponseDto>(
-                leaveDtos,
-                totalCount,
-                filter.PageNumber,
-                filter.PageSize
-            );
+            return new PagedResultDto<LeaveResponseDto>(leaveDtos, totalCount, filter.PageNumber, filter.PageSize);
         }
 
         public async Task<PagedResultDto<LeaveResponseDto>> GetMyLeavesAsync(LeaveFilterDto filter, string userEmail)
         {
             var user = await _userRepository.GetByEmailAsync(userEmail);
             if (user == null)
-                return new PagedResultDto<LeaveResponseDto>(
-                    new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+                return new PagedResultDto<LeaveResponseDto>(new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
 
             var employee = await _employeeRepository.GetByUserIdAsync(user.Id);
             if (employee == null)
-                return new PagedResultDto<LeaveResponseDto>(
-                    new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+            {
+                // Fallback: match by email if UserId link isn't set
+                employee = await _employeeRepository.GetByEmailAsync(userEmail);
+            }
+            if (employee == null)
+                return new PagedResultDto<LeaveResponseDto>(new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
 
             filter.EmployeeId = employee.Id;
-
             var (items, totalCount) = await _leaveRepository.GetFilteredLeavesAsync(filter);
-
             var leaveDtos = new List<LeaveResponseDto>();
             foreach (var leave in items)
                 leaveDtos.Add(await MapToResponseDtoAsync(leave));
-
-            return new PagedResultDto<LeaveResponseDto>(
-                leaveDtos, totalCount, filter.PageNumber, filter.PageSize);
+            return new PagedResultDto<LeaveResponseDto>(leaveDtos, totalCount, filter.PageNumber, filter.PageSize);
         }
 
         public async Task<List<LeaveResponseDto>> GetLeavesByEmployeeIdAsync(string employeeId)
         {
             var leaves = await _leaveRepository.GetLeavesByEmployeeIdAsync(employeeId);
             var leaveDtos = new List<LeaveResponseDto>();
-
             foreach (var leave in leaves)
-            {
                 leaveDtos.Add(await MapToResponseDtoAsync(leave));
-            }
-
             return leaveDtos;
         }
 
@@ -137,12 +714,8 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var leaves = await _leaveRepository.GetPendingLeavesAsync();
             var leaveDtos = new List<LeaveResponseDto>();
-
             foreach (var leave in leaves)
-            {
                 leaveDtos.Add(await MapToResponseDtoAsync(leave));
-            }
-
             return leaveDtos;
         }
 
@@ -150,63 +723,38 @@ namespace AttendanceManagementSystem.Services.Implementations
         {
             var leaves = await _leaveRepository.GetUpcomingLeavesAsync(days);
             var leaveDtos = new List<LeaveResponseDto>();
-
             foreach (var leave in leaves)
-            {
                 leaveDtos.Add(await MapToResponseDtoAsync(leave));
-            }
-
             return leaveDtos;
         }
 
         public async Task<LeaveResponseDto?> UpdateLeaveAsync(string id, UpdateLeaveDto dto, string updatedBy)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending)
-                return null;
+            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending) return null;
 
             var originalTotalDays = leave.TotalDays;
-            var originalLeaveTypeId = leave.LeaveTypeId;
 
-            if (dto.StartDate.HasValue)
-                leave.StartDate = dto.StartDate.Value;
-
-            if (dto.EndDate.HasValue)
-                leave.EndDate = dto.EndDate.Value;
-
-            if (dto.TotalDays.HasValue)
-                leave.TotalDays = dto.TotalDays.Value;
-
-            if (!string.IsNullOrEmpty(dto.Reason))
-                leave.Reason = dto.Reason;
-
-            if (dto.IsEmergencyLeave.HasValue)
-                leave.IsEmergencyLeave = dto.IsEmergencyLeave.Value;
-
-            if (dto.AttachmentUrl != null)
-                leave.AttachmentUrl = dto.AttachmentUrl;
+            if (dto.StartDate.HasValue) leave.StartDate = dto.StartDate.Value;
+            if (dto.EndDate.HasValue) leave.EndDate = dto.EndDate.Value;
+            if (dto.TotalDays.HasValue) leave.TotalDays = dto.TotalDays.Value;
+            if (!string.IsNullOrEmpty(dto.Reason)) leave.Reason = dto.Reason;
+            if (dto.IsEmergencyLeave.HasValue) leave.IsEmergencyLeave = dto.IsEmergencyLeave.Value;
+            if (dto.AttachmentUrl != null) leave.AttachmentUrl = dto.AttachmentUrl;
 
             if (dto.StartDate.HasValue || dto.EndDate.HasValue)
-            {
                 if (await _leaveRepository.HasOverlappingLeaveAsync(leave.EmployeeId, leave.StartDate, leave.EndDate, id))
                     return null;
-            }
 
             if (dto.TotalDays.HasValue && dto.TotalDays.Value != originalTotalDays)
             {
-                var year = leave.StartDate.Year;
                 var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
-                    leave.EmployeeId, leave.LeaveTypeId, year);
-
-                if (leaveBalance == null)
-                    return null;
-
-                if (!leaveBalance.HasSufficientBalance(leave.TotalDays))
+                    leave.EmployeeId, leave.LeaveTypeId, leave.StartDate.Year);
+                if (leaveBalance == null || !leaveBalance.HasSufficientBalance(leave.TotalDays))
                     return null;
             }
 
             leave.UpdatedBy = updatedBy;
-
             var updated = await _leaveRepository.UpdateAsync(id, leave);
             return updated ? await MapToResponseDtoAsync(leave) : null;
         }
@@ -214,16 +762,12 @@ namespace AttendanceManagementSystem.Services.Implementations
         public async Task<bool> DeleteLeaveAsync(string id, string deletedBy)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null)
-                return false;
+            if (leave == null) return false;
 
-            // If approved, restore the leave balance first
             if (leave.LeaveStatus == LeaveStatus.FullyApproved)
             {
-                var year = leave.StartDate.Year;
                 var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
-                    leave.EmployeeId, leave.LeaveTypeId, year);
-
+                    leave.EmployeeId, leave.LeaveTypeId, leave.StartDate.Year);
                 if (leaveBalance != null)
                 {
                     leaveBalance.RestoreLeave(leave.TotalDays);
@@ -233,47 +777,59 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             leave.UpdatedBy = deletedBy;
             leave.DeletedAt = DateTime.UtcNow;
-
             return await _leaveRepository.DeleteAsync(id);
         }
+
+        // ── Approvals ─────────────────────────────────────────────────────────
 
         public async Task<bool> AdminApproveLeaveAsync(string id, string adminUserId)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending)
-                return false;
+            if (leave == null || leave.LeaveStatus != LeaveStatus.Pending) return false;
 
             leave.LeaveStatus = LeaveStatus.AdminApproved;
             leave.AdminApprovedBy = adminUserId;
             leave.AdminApprovedDate = DateTime.UtcNow;
             leave.UpdatedBy = adminUserId;
-            return await _leaveRepository.UpdateAsync(id, leave);
+
+            var result = await _leaveRepository.UpdateAsync(id, leave);
+            if (result)
+            {
+                var userId = await GetUserIdForEmployeeAsync(leave.EmployeeId);
+                if (userId != null)
+                    await TryNotifyAsync(() => _notificationService.NotifyLeaveAdminApprovedAsync(leave, userId));
+            }
+            return result;
         }
 
         public async Task<bool> NayabApproveLeaveAsync(string id, string nayabUserId)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null || leave.LeaveStatus != LeaveStatus.AdminApproved)
-                return false;
+            if (leave == null || leave.LeaveStatus != LeaveStatus.AdminApproved) return false;
 
             leave.LeaveStatus = LeaveStatus.NayabApproved;
             leave.NayabApprovedBy = nayabUserId;
             leave.NayabApprovedDate = DateTime.UtcNow;
             leave.UpdatedBy = nayabUserId;
-            return await _leaveRepository.UpdateAsync(id, leave);
+
+            var result = await _leaveRepository.UpdateAsync(id, leave);
+            if (result)
+            {
+                var userId = await GetUserIdForEmployeeAsync(leave.EmployeeId);
+                if (userId != null)
+                    await TryNotifyAsync(() => _notificationService.NotifyLeaveNayabApprovedAsync(leave, userId));
+            }
+            return result;
         }
 
         public async Task<bool> TehsildarApproveLeaveAsync(string id, string tehsildarUserId)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null || leave.LeaveStatus != LeaveStatus.NayabApproved)
-                return false;
+            if (leave == null || leave.LeaveStatus != LeaveStatus.NayabApproved) return false;
 
-            // Balance is only consumed at final approval
             var leaveBalance = await _leaveBalanceRepository
                 .GetByEmployeeAndLeaveTypeAsync(leave.EmployeeId, leave.LeaveTypeId, leave.StartDate.Year);
-            if (leaveBalance == null || !leaveBalance.ConsumeLeave(leave.TotalDays))
-                return false;
+            if (leaveBalance == null || !leaveBalance.ConsumeLeave(leave.TotalDays)) return false;
 
             await _leaveBalanceRepository.UpdateAsync(leaveBalance.Id, leaveBalance);
 
@@ -283,23 +839,22 @@ namespace AttendanceManagementSystem.Services.Implementations
             leave.ApprovedBy = tehsildarUserId;
             leave.ApprovedDate = DateTime.UtcNow;
             leave.UpdatedBy = tehsildarUserId;
-            return await _leaveRepository.UpdateAsync(id, leave);
+
+            var result = await _leaveRepository.UpdateAsync(id, leave);
+            if (result)
+            {
+                var userId = await GetUserIdForEmployeeAsync(leave.EmployeeId);
+                if (userId != null)
+                    await TryNotifyAsync(() => _notificationService.NotifyLeaveTehsildarApprovedAsync(leave, userId));
+            }
+            return result;
         }
 
-        // Reject — any approver can reject at their stage
         public async Task<bool> RejectLeaveAsync(string id, string rejectedBy, string rejectionReason)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-
-            var rejectableStatuses = new[]
-            {
-        LeaveStatus.Pending,
-        LeaveStatus.AdminApproved,
-        LeaveStatus.NayabApproved
-    };
-
-            if (leave == null || !rejectableStatuses.Contains(leave.LeaveStatus))
-                return false;
+            var rejectableStatuses = new[] { LeaveStatus.Pending, LeaveStatus.AdminApproved, LeaveStatus.NayabApproved };
+            if (leave == null || !rejectableStatuses.Contains(leave.LeaveStatus)) return false;
 
             leave.LeaveStatus = LeaveStatus.Rejected;
             leave.RejectedBy = rejectedBy;
@@ -307,21 +862,25 @@ namespace AttendanceManagementSystem.Services.Implementations
             leave.RejectionReason = rejectionReason;
             leave.UpdatedBy = rejectedBy;
 
-            return await _leaveRepository.UpdateAsync(id, leave);
+            var result = await _leaveRepository.UpdateAsync(id, leave);
+            if (result)
+            {
+                var userId = await GetUserIdForEmployeeAsync(leave.EmployeeId);
+                if (userId != null)
+                    await TryNotifyAsync(() => _notificationService.NotifyLeaveRejectedAsync(leave, userId, rejectionReason));
+            }
+            return result;
         }
 
         public async Task<bool> CancelLeaveAsync(string id, string cancelledBy, string cancellationReason)
         {
             var leave = await _leaveRepository.GetByIdAsync(id);
-            if (leave == null || !leave.CanBeCancelled())
-                return false;
+            if (leave == null || !leave.CanBeCancelled()) return false;
 
             if (leave.LeaveStatus == LeaveStatus.FullyApproved)
             {
-                var year = leave.StartDate.Year;
                 var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
-                    leave.EmployeeId, leave.LeaveTypeId, year);
-
+                    leave.EmployeeId, leave.LeaveTypeId, leave.StartDate.Year);
                 if (leaveBalance != null)
                 {
                     leaveBalance.RestoreLeave(leave.TotalDays);
@@ -334,31 +893,33 @@ namespace AttendanceManagementSystem.Services.Implementations
             leave.CancellationReason = cancellationReason;
             leave.UpdatedBy = cancelledBy;
 
-            return await _leaveRepository.UpdateAsync(id, leave);
+            var result = await _leaveRepository.UpdateAsync(id, leave);
+            if (result)
+            {
+                var userId = await GetUserIdForEmployeeAsync(leave.EmployeeId);
+                if (userId != null)
+                    await TryNotifyAsync(() => _notificationService.NotifyLeaveCancelledAsync(leave, userId));
+            }
+            return result;
         }
+
+        // ── Statistics ────────────────────────────────────────────────────────
 
         public async Task<Dictionary<string, int>> GetLeaveStatisticsByStatusAsync()
         {
             var statistics = new Dictionary<string, int>();
-
             foreach (LeaveStatus status in Enum.GetValues(typeof(LeaveStatus)))
             {
                 var leaves = await _leaveRepository.GetLeavesByStatusAsync(status);
                 statistics[status.ToString()] = leaves.Count;
             }
-
             return statistics;
         }
 
         public async Task<int> GetRemainingLeaveDaysAsync(string employeeId, string leaveTypeId, int year)
         {
-            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
-                employeeId, leaveTypeId, year);
-
-            if (leaveBalance == null)
-                return 0;
-
-            return (int)Math.Floor(leaveBalance.Available);
+            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(employeeId, leaveTypeId, year);
+            return leaveBalance == null ? 0 : (int)Math.Floor(leaveBalance.Available);
         }
 
         public async Task<bool> ValidateLeaveRequestAsync(string employeeId, string leaveTypeId, DateTime startDate, DateTime endDate, string? excludeLeaveId = null)
@@ -367,47 +928,33 @@ namespace AttendanceManagementSystem.Services.Implementations
                 return false;
 
             var leaveType = await _leaveTypeRepository.GetByIdAsync(leaveTypeId);
-            if (leaveType == null || !leaveType.IsActive)
-                return false;
+            if (leaveType == null || !leaveType.IsActive) return false;
 
             var totalDays = (decimal)(endDate - startDate).TotalDays + 1;
-            var year = startDate.Year;
-
-            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(
-                employeeId, leaveTypeId, year);
-
-            if (leaveBalance == null)
-                return false;
-
-            return leaveBalance.HasSufficientBalance(totalDays);
+            var leaveBalance = await _leaveBalanceRepository.GetByEmployeeAndLeaveTypeAsync(employeeId, leaveTypeId, startDate.Year);
+            return leaveBalance != null && leaveBalance.HasSufficientBalance(totalDays);
         }
 
         public async Task<PagedResultDto<LeaveResponseDto>> GetDepartmentLeavesAsync(LeaveFilterDto filter)
         {
-            // If DepartmentId is set, first get all employee IDs in that department
             if (!string.IsNullOrEmpty(filter.DepartmentId))
             {
                 var employees = await _employeeRepository.GetEmployeesByDepartmentAsync(filter.DepartmentId);
                 var employeeIds = employees.Select(e => e.Id).ToList();
 
-                // If no employees in dept, return empty
                 if (!employeeIds.Any())
-                    return new PagedResultDto<LeaveResponseDto>(
-                        new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+                    return new PagedResultDto<LeaveResponseDto>(new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
 
                 if (!string.IsNullOrEmpty(filter.EmployeeId))
                 {
                     if (!employeeIds.Contains(filter.EmployeeId))
-                        return new PagedResultDto<LeaveResponseDto>(
-                            new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
+                        return new PagedResultDto<LeaveResponseDto>(new List<LeaveResponseDto>(), 0, filter.PageNumber, filter.PageSize);
                 }
                 else
                 {
-
                     filter.EmployeeIds = employeeIds;
                 }
             }
-
             return await GetFilteredLeavesAsync(filter);
         }
 
@@ -416,7 +963,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             var user = await _userRepository.GetByEmailAsync(userEmail);
             if (user == null) return new Dictionary<string, int>();
 
-            var employee = await _employeeRepository.GetByUserIdAsync(user.Id);
+            var employee = await _employeeRepository.GetByUserIdAsync(user.Id)
+                           ?? await _employeeRepository.GetByEmailAsync(userEmail); // fallback
             if (employee == null) return new Dictionary<string, int>();
 
             var statistics = new Dictionary<string, int>();
@@ -428,12 +976,22 @@ namespace AttendanceManagementSystem.Services.Implementations
             return statistics;
         }
 
+        // ── Mapping ───────────────────────────────────────────────────────────
+
         private async Task<LeaveResponseDto> MapToResponseDtoAsync(Leave leave)
         {
             var employee = await _employeeRepository.GetByIdAsync(leave.EmployeeId);
             var leaveType = await _leaveTypeRepository.GetByIdAsync(leave.LeaveTypeId);
 
-            // Helper: look up a user by their ID and return their full name
+            Designation? designation = null;
+            if (employee != null && !string.IsNullOrEmpty(employee.DesignationId))
+                designation = await _designationRepository.GetByIdAsync(employee.DesignationId);
+
+            Department? department = null;
+            if (employee != null && !string.IsNullOrEmpty(employee.DepartmentId))
+                if (Guid.TryParse(employee.DepartmentId, out var deptGuid))
+                    department = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
+
             async Task<string?> GetUserName(string? userId)
             {
                 if (string.IsNullOrEmpty(userId)) return null;
@@ -441,7 +999,6 @@ namespace AttendanceManagementSystem.Services.Implementations
                 return user != null ? $"{user.FirstName} {user.LastName}".Trim() : null;
             }
 
-            // Resolve all approver names in parallel for performance
             var adminNameTask = GetUserName(leave.AdminApprovedBy);
             var nayabNameTask = GetUserName(leave.NayabApprovedBy);
             var tehsilNameTask = GetUserName(leave.TehsildarApprovedBy);
@@ -456,14 +1013,21 @@ namespace AttendanceManagementSystem.Services.Implementations
                 EmployeeId = leave.EmployeeId,
                 EmployeeCode = employee?.EmployeeCode,
                 EmployeeName = employee != null
-    ? (employee.GetFullName("mr") is { Length: > 0 } mr ? mr
-       : employee.GetFullName("en") is { Length: > 0 } en ? en
-       : employee.GetFullName("hi"))
-    : null,
+                    ? (employee.GetFullName("mr") is { Length: > 0 } mr ? mr
+                        : employee.GetFullName("en") is { Length: > 0 } en ? en
+                        : employee.GetFullName("hi"))
+                    : null,
+                DesignationName = designation?.DesignationName,
+                DesignationNameMr = designation?.DesignationNameMr ?? designation?.DesignationName,
+                DepartmentId = department?.DepartmentId.ToString(),
+                DepartmentName = department?.DepartmentName ?? department?.DepartmentNameMr,
+                DepartmentNameMr = department?.DepartmentNameMr ?? department?.DepartmentName,
                 LeaveTypeId = leave.LeaveTypeId,
                 LeaveTypeName = leaveType?.Name,
+                LeaveTypeNameMr = leaveType?.NameMr,
                 LeaveTypeCode = leaveType?.Code,
                 LeaveTypeColor = leaveType?.Color,
+                IsPaidLeave = leaveType?.IsPaidLeave ?? true,
                 StartDate = leave.StartDate,
                 EndDate = leave.EndDate,
                 TotalDays = leave.TotalDays,
@@ -474,15 +1038,15 @@ namespace AttendanceManagementSystem.Services.Implementations
 
                 AdminApprovedBy = leave.AdminApprovedBy,
                 AdminApprovedDate = leave.AdminApprovedDate,
-                AdminApprovedByName = await adminNameTask,        // ← NEW
+                AdminApprovedByName = await adminNameTask,
 
                 NayabApprovedBy = leave.NayabApprovedBy,
                 NayabApprovedDate = leave.NayabApprovedDate,
-                NayabApprovedByName = await nayabNameTask,        // ← NEW
+                NayabApprovedByName = await nayabNameTask,
 
                 TehsildarApprovedBy = leave.TehsildarApprovedBy,
                 TehsildarApprovedDate = leave.TehsildarApprovedDate,
-                TehsildarApprovedByName = await tehsilNameTask,   // ← NEW
+                TehsildarApprovedByName = await tehsilNameTask,
 
                 ApprovedBy = leave.ApprovedBy,
                 ApprovedByName = await approvedNameTask,
@@ -503,5 +1067,5 @@ namespace AttendanceManagementSystem.Services.Implementations
                 UpdatedAt = leave.UpdatedAt
             };
         }
-    };
+    }
 }

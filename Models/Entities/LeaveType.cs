@@ -11,6 +11,12 @@ namespace AttendanceManagementSystem.Models.Entities
         [BsonElement("code")]
         public string Code { get; set; } = string.Empty;
 
+        [BsonElement("nameMr")]
+        public string? NameMr { get; set; }
+
+        [BsonElement("nameHi")]
+        public string? NameHi { get; set; }
+
         [BsonElement("description")]
         public string Description { get; set; } = string.Empty;
 
@@ -46,6 +52,9 @@ namespace AttendanceManagementSystem.Models.Entities
 
         [BsonElement("updatedBy")]
         public string? UpdatedBy { get; set; }
+
+        [BsonElement("isPaidLeave")]
+        public bool IsPaidLeave { get; set; } = true;
 
         [BsonElement("deletedAt")]
         [BsonDateTimeOptions(Kind = DateTimeKind.Utc)]

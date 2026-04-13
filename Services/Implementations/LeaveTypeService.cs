@@ -31,6 +31,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Name = dto.Name,
                 Code = dto.Code,
                 Description = dto.Description,
+                IsPaidLeave = dto.IsPaidLeave,
                 MaxDaysPerYear = dto.MaxDaysPerYear,
                 IsCarryForward = dto.IsCarryForward,
                 MaxCarryForwardDays = dto.MaxCarryForwardDays,
@@ -100,6 +101,9 @@ namespace AttendanceManagementSystem.Services.Implementations
             if (!string.IsNullOrEmpty(dto.Description))
                 leaveType.Description = dto.Description;
 
+            if (dto.IsPaidLeave.HasValue)
+                leaveType.IsPaidLeave = dto.IsPaidLeave.Value;
+
             if (dto.MaxDaysPerYear.HasValue)
                 leaveType.MaxDaysPerYear = dto.MaxDaysPerYear.Value;
 
@@ -165,6 +169,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Name = leaveType.Name,
                 Code = leaveType.Code,
                 Description = leaveType.Description,
+                IsPaidLeave = leaveType.IsPaidLeave,
                 MaxDaysPerYear = leaveType.MaxDaysPerYear,
                 IsCarryForward = leaveType.IsCarryForward,
                 MaxCarryForwardDays = leaveType.MaxCarryForwardDays,

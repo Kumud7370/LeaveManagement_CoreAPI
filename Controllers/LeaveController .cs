@@ -1,5 +1,7 @@
 ﻿using AttendanceManagementSystem.Models.DTOs.Common;
+using AttendanceManagementSystem.Models.DTOs.Holiday;
 using AttendanceManagementSystem.Models.DTOs.Leave;
+using AttendanceManagementSystem.Models.Entities;
 using AttendanceManagementSystem.Repositories.Implementations;
 using AttendanceManagementSystem.Repositories.Interfaces;
 using AttendanceManagementSystem.Services.Interfaces;
@@ -16,13 +18,16 @@ namespace AttendanceManagementSystem.Controllers
     {
         private readonly ILeaveService _leaveService;
         private readonly IUserRepository _userRepository;
+        private readonly HolidayRepository _holidayRepository;
 
         public LeaveController(
         ILeaveService leaveService,
-        IUserRepository userRepository)                 
+        IUserRepository userRepository,
+         HolidayRepository holidayRepository)                 
         {
             _leaveService = leaveService;
-            _userRepository = userRepository;               
+            _userRepository = userRepository;
+            _holidayRepository = holidayRepository;
         }
 
         [HttpPost]
@@ -282,6 +287,61 @@ namespace AttendanceManagementSystem.Controllers
                 request.ExcludeLeaveId
             );
 
+            return Ok(ApiResponseDto<bool>.SuccessResponse(result));
+        }
+
+        [HttpGet("holidays/{year:int}")]
+        [AllowAnonymous] // or keep [Authorize] — your choice
+        public async Task<ActionResult<ApiResponseDto<List<HolidayDto>>>>
+    GetHolidays(int year)
+        {
+            var holidays = await _holidayRepository.GetByYearAsync(year);
+            var dtos = holidays.Select(h => new HolidayDto
+            {
+                Id = h.Id,
+                Date = h.Date.ToString("yyyy-MM-dd"),
+                Name = h.Name,
+                NameMr = h.NameMr,
+                Year = h.Year
+            }).ToList();
+            return Ok(ApiResponseDto<List<HolidayDto>>.SuccessResponse(dtos));
+        }
+
+        [HttpPost("holidays")]
+        public async Task<ActionResult<ApiResponseDto<object>>> CreateHoliday(
+    [FromBody] CreateHolidayDto dto)
+        {
+            // Parse and strip time component — force to UTC midnight
+            if (!DateTime.TryParse(dto.Date, out var parsedDate))
+                return BadRequest(ApiResponseDto<object>.ErrorResponse("Invalid date format"));
+
+            var date = DateTime.SpecifyKind(parsedDate.Date, DateTimeKind.Utc); // ← KEY FIX
+
+            var holiday = new Holiday
+            {
+                Date = date,
+                Name = dto.Name ?? dto.Date,
+                NameMr = dto.NameMr,
+                Year = date.Year
+            };
+
+            var created = await _holidayRepository.CreateAsync(holiday);
+            return Ok(ApiResponseDto<object>.SuccessResponse(new
+            {
+                id = created.Id,
+                date = created.Date.ToString("yyyy-MM-dd"),
+                name = created.Name,
+                nameMr = created.NameMr,
+                year = created.Year
+            }));
+        }
+
+        [HttpDelete("holidays/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ApiResponseDto<bool>>>
+            DeleteHoliday(string id)
+        {
+            var result = await _holidayRepository.DeleteAsync(id);
             return Ok(ApiResponseDto<bool>.SuccessResponse(result));
         }
     }

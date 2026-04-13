@@ -10,6 +10,7 @@
         public string? LeaveTypeName { get; set; }
         public string? LeaveTypeCode { get; set; }
         public string? LeaveTypeColor { get; set; }
+        public bool IsPaidLeave { get; set; }
         public int Year { get; set; }
         public decimal TotalAllocated { get; set; }
         public decimal Consumed { get; set; }

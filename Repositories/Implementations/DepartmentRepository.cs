@@ -57,7 +57,9 @@ namespace AttendanceManagementSystem.Repositories.Implementations
             {
                 var searchFilter = filterBuilder.Or(
                     filterBuilder.Regex(x => x.DepartmentCode, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
+                    filterBuilder.Regex(x => x.DepartmentNameMr, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
                     filterBuilder.Regex(x => x.DepartmentName, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
+                    filterBuilder.Regex(x => x.DepartmentNameHi, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm, "i")),
                     filterBuilder.Regex(x => x.Description, new MongoDB.Bson.BsonRegularExpression(filter.SearchTerm ?? "", "i"))
                 );
                 filters.Add(searchFilter);
@@ -82,7 +84,7 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                     : sortBuilder.Ascending(x => x.DepartmentCode),
                 "departmentname" => sortDirection == "desc"
                     ? sortBuilder.Descending(x => x.DepartmentName)
-                    : sortBuilder.Ascending(x => x.DepartmentName),
+                    : sortBuilder.Ascending(x => x.DepartmentNameMr),
                 "displayorder" => sortDirection == "desc"
                     ? sortBuilder.Descending(x => x.DisplayOrder)
                     : sortBuilder.Ascending(x => x.DisplayOrder),
