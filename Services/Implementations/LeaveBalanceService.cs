@@ -76,6 +76,32 @@ namespace AttendanceManagementSystem.Services.Implementations
 
         public async Task<PagedResultDto<LeaveBalanceResponseDto>> GetFilteredLeaveBalancesAsync(LeaveBalanceFilterDto filter)
         {
+            if (!string.IsNullOrWhiteSpace(filter.EmployeeName))
+            {
+                var searchTerm = filter.EmployeeName.Trim().ToLower();
+
+                var matchingEmployees = await _employeeRepository.GetAllAsync();
+                // adjust to your actual employee fetch method
+
+                var matchingIds = matchingEmployees
+                    .Where(e => !e.IsDeleted &&
+                                ((e.FirstName + " " + e.LastName).ToLower().Contains(searchTerm) ||
+                                 (e.EmployeeCode ?? "").ToLower().Contains(searchTerm)))
+                    .Select(e => e.Id)
+                    .ToList();
+
+                if (matchingIds.Count == 0)
+                {
+                    return new PagedResultDto<LeaveBalanceResponseDto>(
+                        new List<LeaveBalanceResponseDto>(),
+                        0,
+                        filter.PageNumber,
+                        filter.PageSize
+                    );
+                }
+
+                filter.EmployeeIds = matchingIds;
+            }
             var (items, totalCount) = await _leaveBalanceRepository.GetFilteredLeaveBalancesAsync(filter);
 
             var balanceDtos = new List<LeaveBalanceResponseDto>();
@@ -126,7 +152,7 @@ namespace AttendanceManagementSystem.Services.Implementations
                     leaveTypeBalances.Add(new LeaveTypeBalanceDto
                     {
                         LeaveTypeId = balance.LeaveTypeId,
-                        LeaveTypeName = leaveType.Name,
+                        LeaveTypeName = leaveType.NameMr ?? leaveType.Name,
                         LeaveTypeCode = leaveType.Code,
                         LeaveTypeColor = leaveType.Color,
                         TotalAllocated = balance.TotalAllocated,
