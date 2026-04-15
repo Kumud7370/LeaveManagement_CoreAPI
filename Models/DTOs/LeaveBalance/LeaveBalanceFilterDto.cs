@@ -3,7 +3,9 @@
     public class LeaveBalanceFilterDto
     {
         public string? EmployeeId { get; set; }
+        public List<string>? EmployeeIds { get; set; }
         public string? LeaveTypeId { get; set; }
+        public string? EmployeeName { get; set; }
         public int? Year { get; set; }
         public decimal? MinAvailableBalance { get; set; }
         public decimal? MaxAvailableBalance { get; set; }

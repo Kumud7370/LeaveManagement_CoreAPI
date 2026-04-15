@@ -30,6 +30,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             {
                 Name = dto.Name,
                 Code = dto.Code,
+                NameMr = dto.NameMr,
+                NameHi = dto.NameHi,
                 Description = dto.Description,
                 IsPaidLeave = dto.IsPaidLeave,
                 MaxDaysPerYear = dto.MaxDaysPerYear,
@@ -97,6 +99,12 @@ namespace AttendanceManagementSystem.Services.Implementations
 
             if (!string.IsNullOrEmpty(dto.Code))
                 leaveType.Code = dto.Code;
+
+            if (dto.NameMr != null)
+                leaveType.NameMr = dto.NameMr;
+
+            if (dto.NameHi != null)
+                leaveType.NameHi = dto.NameHi;
 
             if (!string.IsNullOrEmpty(dto.Description))
                 leaveType.Description = dto.Description;
@@ -167,6 +175,8 @@ namespace AttendanceManagementSystem.Services.Implementations
             {
                 Id = leaveType.Id,
                 Name = leaveType.Name,
+                NameMr = leaveType.NameMr,  
+                NameHi = leaveType.NameHi,
                 Code = leaveType.Code,
                 Description = leaveType.Description,
                 IsPaidLeave = leaveType.IsPaidLeave,

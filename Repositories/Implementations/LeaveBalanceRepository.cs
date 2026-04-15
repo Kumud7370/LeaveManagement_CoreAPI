@@ -84,6 +84,11 @@ namespace AttendanceManagementSystem.Repositories.Implementations
                 filters.Add(filterBuilder.Eq(x => x.EmployeeId, filter.EmployeeId));
             }
 
+            if (filter.EmployeeIds != null && filter.EmployeeIds.Count > 0)
+            {
+                filters.Add(filterBuilder.In(x => x.EmployeeId, filter.EmployeeIds));
+            }
+
             if (!string.IsNullOrWhiteSpace(filter.LeaveTypeId))
             {
                 filters.Add(filterBuilder.Eq(x => x.LeaveTypeId, filter.LeaveTypeId));

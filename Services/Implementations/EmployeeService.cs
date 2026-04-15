@@ -4,6 +4,7 @@ using AttendanceManagementSystem.Models.Entities;
 using AttendanceManagementSystem.Models.Enums;
 using AttendanceManagementSystem.Repositories.Interfaces;
 using AttendanceManagementSystem.Services.Interfaces;
+using System.Diagnostics;
 
 namespace AttendanceManagementSystem.Services.Implementations
 {
@@ -103,8 +104,12 @@ namespace AttendanceManagementSystem.Services.Implementations
             var departmentMap = await GetDepartmentNamesAsync(departmentIds);
             var designationMap = await GetDesignationNamesAsync(designationIds);
 
-            var dtos = items.Select(e => MapToResponseDto(e, departmentMap, designationMap)).ToList();
+            var dtos = new List<EmployeeResponseDto>();
 
+            foreach (var e in items)
+            {
+                dtos.Add(await MapToResponseDtoAsync(e));
+            }
             return new PagedResultDto<EmployeeResponseDto>(dtos, totalCount, filter.PageNumber, filter.PageSize);
         }
 
@@ -334,53 +339,50 @@ namespace AttendanceManagementSystem.Services.Implementations
         private async Task<EmployeeResponseDto> MapToResponseDtoAsync(Employee employee)
         {
             string? departmentName = null;
+            string? departmentNameMr = null;
+            string? departmentNameHi = null;
+            string? departmentNameEn = null;
+
             string? designationName = null;
+            string? designationNameMr = null;
+            string? designationNameHi = null;
+            string? designationNameEn = null;
+
             string? managerName = null;
 
+            // Department
             if (!string.IsNullOrEmpty(employee.DepartmentId) && Guid.TryParse(employee.DepartmentId, out var deptGuid))
             {
                 var dept = await _departmentRepository.GetByDepartmentIdAsync(deptGuid);
-                departmentName = dept?.DepartmentName;
+
+                if (dept != null)
+                {
+                    departmentName = dept.DepartmentName;
+                    departmentNameMr = dept.DepartmentName;
+                    departmentNameHi = dept.DepartmentName;
+                    departmentNameEn = dept.DepartmentName;
+                }
             }
 
+            // Designation
             if (!string.IsNullOrEmpty(employee.DesignationId))
             {
                 var desig = await _designationRepository.GetByIdAsync(employee.DesignationId);
-                designationName = desig?.DesignationName;
+
+                if (desig != null)
+                {
+                    designationName = desig.DesignationName;
+                    designationNameMr = desig.DesignationNameMr;
+                    designationNameHi = desig.DesignationNameHi;
+                    designationNameEn = desig.DesignationNameEn;
+                }
             }
 
+            // Manager
             if (!string.IsNullOrEmpty(employee.ManagerId))
             {
                 var manager = await _employeeRepository.GetByIdAsync(employee.ManagerId);
                 managerName = manager?.GetFullName("mr");
-            }
-
-            return BuildDto(employee, departmentName, designationName, managerName);
-        }
-
-        private EmployeeResponseDto MapToResponseDto(
-            Employee employee,
-            Dictionary<string, string> departmentMap,
-            Dictionary<string, string> designationMap)
-        {
-            departmentMap.TryGetValue(employee.DepartmentId ?? "", out var departmentName);
-            designationMap.TryGetValue(employee.DesignationId ?? "", out var designationName);
-            return BuildDto(employee, departmentName, designationName, null);
-        }
-
-        private static EmployeeResponseDto BuildDto(
-            Employee employee,
-            string? departmentName,
-            string? designationName,
-            string? managerName)
-        {
-            // Compute English full name helper
-            static string? BuildName(string? first, string? middle, string? last)
-            {
-                if (string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)) return null;
-                return string.IsNullOrWhiteSpace(middle)
-                    ? $"{first} {last}"
-                    : $"{first} {middle} {last}";
             }
 
             return new EmployeeResponseDto
@@ -388,49 +390,47 @@ namespace AttendanceManagementSystem.Services.Implementations
                 Id = employee.Id,
                 EmployeeCode = employee.EmployeeCode,
 
-                // Marathi
                 FirstNameMr = employee.FirstNameMr,
                 MiddleNameMr = employee.MiddleNameMr,
                 LastNameMr = employee.LastNameMr,
 
-                // English
                 FirstName = employee.FirstName,
                 MiddleName = employee.MiddleName,
                 LastName = employee.LastName,
 
-                // Hindi
                 FirstNameHi = employee.FirstNameHi,
                 MiddleNameHi = employee.MiddleNameHi,
                 LastNameHi = employee.LastNameHi,
 
-                // Computed names
                 FullName = employee.GetFullName("mr"),
-                FullNameEn = BuildName(employee.FirstName, employee.MiddleName, employee.LastName),
-                FullNameHi = BuildName(employee.FirstNameHi, employee.MiddleNameHi, employee.LastNameHi),
 
                 Email = employee.Email,
                 PhoneNumber = employee.PhoneNumber,
-                AlternatePhoneNumber = employee.AlternatePhoneNumber,
-                DateOfBirth = employee.DateOfBirth,
-                Age = employee.GetAge(),
-                Gender = employee.Gender,
-                GenderName = employee.Gender.ToString(),
-                Address = employee.Address,
+
                 DepartmentId = employee.DepartmentId,
                 DepartmentName = departmentName,
+                DepartmentNameMr = departmentNameMr,
+                DepartmentNameHi = departmentNameHi,
+                DepartmentNameEn = departmentNameEn,
+
                 DesignationId = employee.DesignationId,
                 DesignationName = designationName,
+                DesignationNameMr = designationNameMr,
+                DesignationNameHi = designationNameHi,
+                DesignationNameEn = designationNameEn,
+
                 ManagerId = employee.ManagerId,
                 ManagerName = managerName,
+
                 DateOfJoining = employee.DateOfJoining,
                 DateOfLeaving = employee.DateOfLeaving,
+
                 EmploymentType = employee.EmploymentType,
                 EmploymentTypeName = employee.EmploymentType.ToString(),
+
                 EmployeeStatus = employee.EmployeeStatus,
                 EmployeeStatusName = employee.EmployeeStatus.ToString(),
-                ProfileImageUrl = employee.ProfileImageUrl,
-                BiometricId = employee.BiometricId,
-                IsCurrentlyEmployed = employee.IsCurrentlyEmployed(),
+
                 CreatedAt = employee.CreatedAt,
                 UpdatedAt = employee.UpdatedAt
             };
